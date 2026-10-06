@@ -29,6 +29,22 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     return true;
   }
 
+  esInvulnerable(tiempo) {
+    return tiempo < this.invulnerableHasta;
+  }
+
+  recibirDanio(tiempo) {
+    if (this.esInvulnerable(tiempo)) return false;
+    this.vidas -= 1;
+    this.invulnerableHasta = tiempo + JUGADOR.invulnerabilidadMs;
+    return true;
+  }
+
+  preUpdate(time, delta) {
+    super.preUpdate(time, delta);
+    this.alpha = this.esInvulnerable(time) && Math.floor(time / 80) % 2 === 0 ? 0.3 : 1;
+  }
+
   apuntarA(x, y) {
     this.rotation = Math.atan2(y - this.y, x - this.x);
   }

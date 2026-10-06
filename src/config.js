@@ -24,3 +24,23 @@ export const BALA = {
   poolMax: 60,
   distanciaCanon: 20
 };
+
+export const ENEMIGOS = {
+  poolMax: 120,
+  margenAparicion: 30,
+  flashMs: 70,
+  zigzag: 0.35,
+  tipos: {
+    normal: { vida: 2, velocidad: 85, radio: 13, puntos: 10, color: 0xff4d6d },
+    rapido: { vida: 1, velocidad: 155, radio: 9, puntos: 15, color: 0xffa62b },
+    tanque: { vida: 8, velocidad: 48, radio: 22, puntos: 40, color: 0xa66bff }
+  }
+};
+
+export const EFECTOS = {
+  particulasPorExplosion: 8,
+  particulasMax: 120,
+  vidaParticulaMs: 280,
+  sacudidaMs: 160,
+  sacudidaIntensidad: 0.008
+};
