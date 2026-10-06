@@ -11,7 +11,10 @@ const juego = new Phaser.Game({
   width: ANCHO,
   height: ALTO,
   backgroundColor: COLORES.fondo,
-  pixelArt: false,
+  banner: false,
+  disableContextMenu: true,
+  audio: { noAudio: true },
+  input: { activePointers: 3 },
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH

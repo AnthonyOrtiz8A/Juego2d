@@ -20,8 +20,6 @@ export default class TouchControls {
     this.baseX = TACTIL.joystickX;
     this.baseY = TACTIL.joystickY;
 
-    scene.input.addPointer(2);
-
     this.base = scene.add.image(this.baseX, this.baseY, 'joy-base');
     this.perilla = scene.add.image(this.baseX, this.baseY, 'joy-perilla');
     this.boton = scene.add.image(TACTIL.botonX, TACTIL.botonY, 'boton-disparo');
