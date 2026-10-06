@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ANCHO, ALTO, COLORES, ENEMIGOS } from '../config.js';
+import { ANCHO, ALTO, COLORES, ENEMIGOS, TACTIL } from '../config.js';
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -42,7 +42,41 @@ export default class BootScene extends Phaser.Scene {
       g.fillRect(0, 0, 6, 6);
     });
 
+    this.crearControlesTactiles();
+
     this.scene.start('Menu');
+  }
+
+  crearControlesTactiles() {
+    const rj = TACTIL.radioJoystick;
+    this.crearTextura('joy-base', rj * 2 + 4, rj * 2 + 4, (g) => {
+      g.fillStyle(COLORES.borde, 0.12);
+      g.fillCircle(rj + 2, rj + 2, rj);
+      g.lineStyle(3, COLORES.borde, 0.8);
+      g.strokeCircle(rj + 2, rj + 2, rj);
+    });
+
+    const rp = TACTIL.radioPerilla;
+    this.crearTextura('joy-perilla', rp * 2 + 4, rp * 2 + 4, (g) => {
+      g.fillStyle(COLORES.jugador, 0.9);
+      g.fillCircle(rp + 2, rp + 2, rp);
+      g.lineStyle(2, COLORES.borde, 1);
+      g.strokeCircle(rp + 2, rp + 2, rp);
+    });
+
+    const rb = TACTIL.radioBoton;
+    const c = rb + 2;
+    this.crearTextura('boton-disparo', c * 2, c * 2, (g) => {
+      g.fillStyle(0xff4d6d, 0.35);
+      g.fillCircle(c, c, rb);
+      g.lineStyle(3, COLORES.borde, 0.9);
+      g.strokeCircle(c, c, rb);
+      g.strokeCircle(c, c, rb * 0.4);
+      g.lineBetween(c - rb * 0.75, c, c - rb * 0.2, c);
+      g.lineBetween(c + rb * 0.2, c, c + rb * 0.75, c);
+      g.lineBetween(c, c - rb * 0.75, c, c - rb * 0.2);
+      g.lineBetween(c, c + rb * 0.2, c, c + rb * 0.75);
+    });
   }
 
   crearEnemigos() {

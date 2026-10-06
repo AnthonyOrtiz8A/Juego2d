@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
-import { ANCHO, ALTO, COLORES, JUGADOR, BALA, ENEMIGOS, EFECTOS } from '../config.js';
+import { ANCHO, ALTO, COLORES, JUGADOR, BALA, ENEMIGOS, EFECTOS, TACTIL } from '../config.js';
 import Player from '../entities/Player.js';
 import Bullet from '../entities/Bullet.js';
 import Enemy from '../entities/Enemy.js';
 import WaveManager from '../systems/WaveManager.js';
 import Storage from '../systems/Storage.js';
 import Sonido from '../systems/Sonido.js';
+import TouchControls from '../systems/TouchControls.js';
 import { crearTexto, crearBoton } from '../systems/Interfaz.js';
 
 const PROFUNDIDAD_HUD = 30;
@@ -44,6 +45,7 @@ export default class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-ESC', this.alternarPausa, this);
 
     this.crearHud();
+    this.controlesTactiles = new TouchControls(this);
     this.crearAnuncio();
     this.crearMenuPausa();
 
@@ -127,6 +129,8 @@ export default class GameScene extends Phaser.Scene {
     this.tweens.pauseAll();
     this.explosion.pause();
     this.anuncio.setVisible(false);
+    this.controlesTactiles.reiniciar();
+    this.controlesTactiles.mostrar(false);
     this.mostrarMenuPausa(true);
   }
 
@@ -138,6 +142,7 @@ export default class GameScene extends Phaser.Scene {
     this.tweens.resumeAll();
     this.explosion.resume();
     this.anuncio.setVisible(true);
+    this.controlesTactiles.mostrar(true);
     this.mostrarMenuPausa(false);
   }
 
@@ -254,17 +259,49 @@ export default class GameScene extends Phaser.Scene {
     Sonido.disparo();
   }
 
+  enemigoMasCercano() {
+    const lista = this.enemigos.getChildren();
+    let mejor = null;
+    let mejorDistancia = TACTIL.alcanceAutoApuntado * TACTIL.alcanceAutoApuntado;
+    for (let i = 0; i < lista.length; i++) {
+      const enemigo = lista[i];
+      if (!enemigo.active) continue;
+      const dx = enemigo.x - this.jugador.x;
+      const dy = enemigo.y - this.jugador.y;
+      const distancia = dx * dx + dy * dy;
+      if (distancia < mejorDistancia) {
+        mejorDistancia = distancia;
+        mejor = enemigo;
+      }
+    }
+    return mejor;
+  }
+
   update(time) {
     if (this.pausado || this.terminado) return;
 
     const t = this.teclas;
-    const dx = (t.D.isDown || t.RIGHT.isDown ? 1 : 0) - (t.A.isDown || t.LEFT.isDown ? 1 : 0);
-    const dy = (t.S.isDown || t.DOWN.isDown ? 1 : 0) - (t.W.isDown || t.UP.isDown ? 1 : 0);
+    const tactil = this.controlesTactiles;
+    let dx = (t.D.isDown || t.RIGHT.isDown ? 1 : 0) - (t.A.isDown || t.LEFT.isDown ? 1 : 0);
+    let dy = (t.S.isDown || t.DOWN.isDown ? 1 : 0) - (t.W.isDown || t.UP.isDown ? 1 : 0);
+    if (dx === 0 && dy === 0) {
+      dx = tactil.dx;
+      dy = tactil.dy;
+    }
     this.jugador.mover(dx, dy);
 
     const puntero = this.input.mousePointer;
-    this.jugador.apuntarA(puntero.x, puntero.y);
+    let disparando = puntero.leftButtonDown() || t.SPACE.isDown;
 
-    if (puntero.leftButtonDown() || t.SPACE.isDown) this.disparar(time);
+    if (tactil.activo) {
+      const objetivo = this.enemigoMasCercano();
+      if (objetivo) this.jugador.apuntarA(objetivo.x, objetivo.y);
+      else if (dx !== 0 || dy !== 0) this.jugador.rotation = Math.atan2(dy, dx);
+      disparando = disparando || tactil.disparando;
+    } else {
+      this.jugador.apuntarA(puntero.x, puntero.y);
+    }
+
+    if (disparando) this.disparar(time);
   }
 }

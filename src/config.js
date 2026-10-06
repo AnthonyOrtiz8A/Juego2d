@@ -57,6 +57,19 @@ export const OLEADAS = {
   incrementoProbabilidad: 0.03
 };
 
+export const TACTIL = {
+  radioJoystick: 60,
+  radioPerilla: 26,
+  zonaMuerta: 8,
+  joystickX: 130,
+  joystickY: ALTO - 130,
+  radioBoton: 52,
+  botonX: ANCHO - 115,
+  botonY: ALTO - 115,
+  alcanceAutoApuntado: 460,
+  opacidad: 0.45
+};
+
 export const EFECTOS = {
   particulasPorExplosion: 8,
   particulasMax: 120,

@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
-import { ANCHO, ALTO } from '../config.js';
+import { ANCHO } from '../config.js';
 import Storage from '../systems/Storage.js';
 import Sonido from '../systems/Sonido.js';
 import { crearTexto, crearBoton } from '../systems/Interfaz.js';
+import { esDispositivoTactil } from '../systems/TouchControls.js';
 
 export default class MenuScene extends Phaser.Scene {
   constructor() {
@@ -37,6 +38,9 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   textoControles() {
+    if (esDispositivoTactil(this.game)) {
+      return 'Mover: joystick (lado izquierdo)\nDisparar: mantén pulsado el lado derecho (apunta solo)';
+    }
     return 'Mover: WASD o flechas   ·   Apuntar: mouse\nDisparar: clic izquierdo (mantener)   ·   Pausa: P o Esc';
   }
 
