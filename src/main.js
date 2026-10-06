@@ -4,6 +4,7 @@ import BootScene from './scenes/BootScene.js';
 import MenuScene from './scenes/MenuScene.js';
 import GameScene from './scenes/GameScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
+import PacmanScene from './scenes/PacmanScene.js';
 
 const juego = new Phaser.Game({
   type: Phaser.AUTO,
@@ -23,7 +24,7 @@ const juego = new Phaser.Game({
     default: 'arcade',
     arcade: { debug: false }
   },
-  scene: [BootScene, MenuScene, GameScene, GameOverScene]
+  scene: [BootScene, MenuScene, GameScene, GameOverScene, PacmanScene]
 });
 
 if (import.meta.env.DEV) window.juego = juego;

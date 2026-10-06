@@ -19,13 +19,14 @@ export default class MenuScene extends Phaser.Scene {
     crearTexto(this, ANCHO / 2, 195, 'Sobrevive a las oleadas infinitas', 18, '#9aa4c7').setOrigin(0.5);
     crearTexto(this, ANCHO / 2, 240, 'Récord: ' + Storage.obtenerRecord(), 22, '#fff27a').setOrigin(0.5);
 
-    crearBoton(this, ANCHO / 2, 315, 'Jugar', () => this.jugar());
-    const botonSonido = crearBoton(this, ANCHO / 2, 380, this.textoSonido(), () => {
+    crearBoton(this, ANCHO / 2, 300, 'Jugar', () => this.jugar());
+    crearBoton(this, ANCHO / 2, 362, 'Minijuego: Pac-Man', () => this.scene.start('Pacman'), 280);
+    const botonSonido = crearBoton(this, ANCHO / 2, 424, this.textoSonido(), () => {
       Sonido.alternar();
       botonSonido.etiqueta.setText(this.textoSonido());
     });
 
-    crearTexto(this, ANCHO / 2, 490, this.textoControles(), 16, '#9aa4c7').setOrigin(0.5).setLineSpacing(6);
+    crearTexto(this, ANCHO / 2, 525, this.textoControles(), 16, '#9aa4c7').setOrigin(0.5).setLineSpacing(6);
 
     this.input.keyboard.on('keydown-ENTER', () => this.jugar());
     this.input.keyboard.on('keydown-SPACE', (evento) => {

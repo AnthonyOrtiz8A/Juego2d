@@ -120,3 +120,55 @@ export const HABILIDADES = {
     congelar: { enfriamientoMs: 15000, duracionMs: 4000, factorVelocidad: 0.3, color: 0x8fd3ff }
   }
 };
+
+export const PACMAN = {
+  celda: 24,
+  vidas: 3,
+  velocidad: 7.5,
+  velocidadFantasma: 6.8,
+  velocidadAsustado: 4.2,
+  velocidadOjos: 14,
+  aumentoPorNivel: 0.05,
+  asustadoMs: 6000,
+  parpadeoMs: 1800,
+  dispersionMs: 7000,
+  persecucionMs: 20000,
+  salidaFantasmasMs: [0, 2500, 5000, 7500],
+  esperaMuerteMs: 1400,
+  esperaNivelMs: 1500,
+  radioChoque: 0.6,
+  umbralDeslizar: 18,
+  puntos: { punto: 10, superPunto: 50, fantasma: 200 },
+  colores: { pared: 0x2340d8, borde: 0x6f8bff, puerta: 0xffb8de, punto: 0xffd9b0, pacman: 0xffe14d },
+  fantasmas: [
+    { nombre: 'blinky', color: 0xff3b3b, esquina: { c: 17, f: 0 }, inicio: { c: 9, f: 7 } },
+    { nombre: 'pinky', color: 0xffa6e1, esquina: { c: 1, f: 0 }, inicio: { c: 9, f: 9 } },
+    { nombre: 'inky', color: 0x3ee8ff, esquina: { c: 17, f: 20 }, inicio: { c: 8, f: 9 } },
+    { nombre: 'clyde', color: 0xffb347, esquina: { c: 1, f: 20 }, inicio: { c: 10, f: 9 } }
+  ],
+  salida: { c: 9, f: 7 },
+  casa: { c: 9, f: 9 },
+  mapa: [
+    '###################',
+    '#o.......#.......o#',
+    '#.##.###.#.###.##.#',
+    '#.................#',
+    '#.##.#.#####.#.##.#',
+    '#....#...#...#....#',
+    '####.### # ###.####',
+    '   #.#   G   #.#   ',
+    '####.# ##-## #.####',
+    '    .  #GGG#  .    ',
+    '####.# ##### #.####',
+    '   #.#       #.#   ',
+    '####.# ##### #.####',
+    '#........#........#',
+    '#.##.###.#.###.##.#',
+    '#o.#.....P.....#.o#',
+    '##.#.#.#####.#.#.##',
+    '#....#...#...#....#',
+    '#.######.#.######.#',
+    '#.................#',
+    '###################'
+  ]
+};

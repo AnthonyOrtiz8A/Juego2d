@@ -56,6 +56,14 @@ class Sonido {
     this.tono(300, 0.22, 'sine', 0.09, 900);
   }
 
+  comer() {
+    this.tono(520, 0.06, 'triangle', 0.04, 260);
+  }
+
+  comerFantasma() {
+    this.tono(200, 0.25, 'square', 0.05, 1200);
+  }
+
   oleada() {
     this.tono(440, 0.3, 'sine', 0.08, 1100);
   }

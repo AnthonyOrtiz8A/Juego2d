@@ -36,6 +36,14 @@ Los enfriamientos se detienen mientras el juego está en pausa o eligiendo poder
 - El récord se guarda en el navegador (`localStorage`).
 - El sonido (generado con WebAudio) está desactivado por defecto; se activa desde el menú.
 
+## Minijuego: Pac-Man
+
+Desde el menú principal, el botón **Minijuego: Pac-Man** abre un Pac-Man completo: laberinto con 150 puntos y 4 súper puntos, túnel lateral, y 4 fantasmas con su comportamiento clásico (Blinky te persigue, Pinky se adelanta, Inky flanquea y Clyde huye si se acerca), alternando entre dispersión y persecución. Al comer un súper punto los fantasmas se vuelven azules y valen 200, 400, 800 y 1600 puntos; sus ojos regresan a la casa para revivir.
+
+- Controles: flechas o WASD en PC (P pausa, Esc vuelve al menú); en celular, desliza el dedo.
+- 3 vidas, niveles cada vez más rápidos y récord propio guardado aparte.
+- Los valores (velocidades, tiempos, puntos y el laberinto) están en `PACMAN` dentro de `src/config.js`.
+
 ## Requisitos
 
 - Node.js **20.19+** o **22.12+**
@@ -107,7 +115,7 @@ Como `vite.config.js` usa `base: './'`, el build funciona en cualquier ruta sin 
 └── src/
     ├── main.js              Configuración de Phaser
     ├── config.js            Valores de balance (velocidades, vida, cadencia, oleadas…)
-    ├── scenes/              Boot (genera texturas), Menu, Game, GameOver
+    ├── scenes/              Boot (genera texturas), Menu, Game, GameOver, Pacman
     ├── entities/            Player, Enemy, Bullet
     └── systems/             WaveManager, TouchControls, Storage, Sonido, Interfaz,
                              Habilidades, BotonesHabilidad, SelectorHabilidades
