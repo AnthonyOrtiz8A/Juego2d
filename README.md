@@ -31,7 +31,8 @@ Empiezas con **Impulso** en la tecla E. Al terminar la oleada 3 se desbloquea la
 
 Los enfriamientos se detienen mientras el juego está en pausa o eligiendo poder. Todos los valores se ajustan en `HABILIDADES` dentro de `src/config.js`.
 
-- Tipos de enemigo: **normal** (rojo), **rápido** (naranja, poca vida), **tanque** (morado, lento y resistente) y **tirador** (verde, desde la oleada 3: se mantiene a distancia y te dispara; el Escudo bloquea sus balas).
+- Juegas como un estudiante con mochila en una ciudad en ruinas (calles, autos quemados, sangre y edificios que hacen de muro en el borde).
+- Tipos de zombie: **normal** (ropa rota, brazos estirados), **rápido** (flaco y pálido, poca vida), **tanque** (enorme, lento y resistente) y **escupidor** (inflado y verde, desde la oleada 3: se mantiene a distancia y te escupe ácido; el Escudo lo bloquea).
 - Tienes 3 vidas y un breve tiempo de invulnerabilidad tras recibir daño.
 - El récord se guarda en el navegador (`localStorage`).
 - El sonido (generado con WebAudio) está desactivado por defecto; se activa desde el menú.
@@ -117,7 +118,7 @@ Como `vite.config.js` usa `base: './'`, el build funciona en cualquier ruta sin 
     ├── config.js            Valores de balance (velocidades, vida, cadencia, oleadas…)
     ├── scenes/              Boot (genera texturas), Menu, Game, GameOver, Pacman
     ├── entities/            Player, Enemy, Bullet
-    └── systems/             WaveManager, TouchControls, Storage, Sonido, Interfaz,
+    └── systems/             WaveManager, TouchControls, Storage, Sonido, Interfaz, Dibujos,
                              Habilidades, BotonesHabilidad, SelectorHabilidades
 ```
 

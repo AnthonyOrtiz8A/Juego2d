@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ANCHO } from '../config.js';
+import { ANCHO, ALTO } from '../config.js';
 import { crearTexto, crearBoton } from '../systems/Interfaz.js';
 
 const ESPERA_TECLADO_MS = 500;
@@ -17,8 +17,8 @@ export default class GameOverScene extends Phaser.Scene {
   }
 
   create() {
-    this.add.image(0, 0, 'fondo').setOrigin(0);
-    this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x000000, 0.45).setOrigin(0);
+    this.add.image(ANCHO / 2, ALTO / 2, 'ciudad');
+    this.add.rectangle(0, 0, ANCHO, ALTO, 0x000000, 0.6).setOrigin(0);
 
     crearTexto(this, ANCHO / 2, 120, 'FIN DEL JUEGO', 56, '#ff4d6d').setOrigin(0.5);
     crearTexto(this, ANCHO / 2, 200, 'Puntos: ' + this.puntos, 30).setOrigin(0.5);

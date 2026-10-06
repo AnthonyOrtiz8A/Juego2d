@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ANCHO, ALTO, MUNDO, COLORES, JUGADOR, BALA, BALA_ENEMIGA, ENEMIGOS, EFECTOS, TACTIL, HABILIDADES } from '../config.js';
+import { ANCHO, ALTO, MUNDO, JUGADOR, BALA, BALA_ENEMIGA, ENEMIGOS, EFECTOS, TACTIL, HABILIDADES } from '../config.js';
 import Player from '../entities/Player.js';
 import Bullet from '../entities/Bullet.js';
 import Enemy from '../entities/Enemy.js';
@@ -11,6 +11,7 @@ import GestorHabilidades from '../systems/Habilidades.js';
 import BotonesHabilidad from '../systems/BotonesHabilidad.js';
 import SelectorHabilidades from '../systems/SelectorHabilidades.js';
 import { crearTexto, crearBoton } from '../systems/Interfaz.js';
+import { ESTUDIANTE } from '../systems/Dibujos.js';
 
 const PROFUNDIDAD_HUD = 30;
 const PROFUNDIDAD_PAUSA = 50;
@@ -22,9 +23,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
-    this.add.tileSprite(0, 0, MUNDO.ancho, MUNDO.alto, 'celda').setOrigin(0);
-    this.add.rectangle(0, 0, MUNDO.ancho, MUNDO.alto).setOrigin(0).setStrokeStyle(4, COLORES.jugador, 0.6);
-    this.physics.world.setBounds(0, 0, MUNDO.ancho, MUNDO.alto);
+    this.add.image(0, 0, 'ciudad').setOrigin(0);
+    this.physics.world.setBounds(MUNDO.borde, MUNDO.borde, MUNDO.ancho - MUNDO.borde * 2, MUNDO.alto - MUNDO.borde * 2);
     this.puntoMundo = new Phaser.Math.Vector2();
 
     this.puntos = 0;
@@ -110,7 +110,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.iconosVida = [];
     for (let i = 0; i < JUGADOR.vidas; i++) {
-      const icono = this.add.image(28 + i * 26, 76, 'jugador').setScale(0.55).setRotation(-Math.PI / 2).setScrollFactor(0).setDepth(PROFUNDIDAD_HUD);
+      const icono = this.add.image(26 + i * 24, 76, 'corazon').setScrollFactor(0).setDepth(PROFUNDIDAD_HUD);
       this.iconosVida.push(icono);
     }
 
@@ -340,7 +340,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   eliminarEnemigo(enemigo) {
-    this.explotar(enemigo.x, enemigo.y, enemigo.datos.color);
+    this.explotar(enemigo.x, enemigo.y, enemigo.datos.sangre);
     enemigo.desactivar();
     if (!this.terminado) this.oleadas.verificarFin();
   }
@@ -349,8 +349,8 @@ export default class GameScene extends Phaser.Scene {
     this.terminado = true;
     this.oleadas.detener();
     this.physics.pause();
-    this.explotar(this.jugador.x, this.jugador.y, COLORES.jugador);
-    this.explotar(this.jugador.x, this.jugador.y, COLORES.borde);
+    this.explotar(this.jugador.x, this.jugador.y, ESTUDIANTE.sudadera);
+    this.explotar(this.jugador.x, this.jugador.y, 0x8a1010);
     this.jugador.setVisible(false);
     this.escudo.setVisible(false);
     this.botonesHabilidad.mostrar(false);

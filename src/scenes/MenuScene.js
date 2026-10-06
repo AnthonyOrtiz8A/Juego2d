@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ANCHO } from '../config.js';
+import { ANCHO, ALTO } from '../config.js';
 import Storage from '../systems/Storage.js';
 import Sonido from '../systems/Sonido.js';
 import { crearTexto, crearBoton } from '../systems/Interfaz.js';
@@ -11,7 +11,8 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   create() {
-    this.add.image(0, 0, 'fondo').setOrigin(0);
+    this.add.image(ANCHO / 2, ALTO / 2, 'ciudad');
+    this.add.rectangle(0, 0, ANCHO, ALTO, 0x000000, 0.55).setOrigin(0);
 
     const titulo = crearTexto(this, ANCHO / 2, 130, 'SHOOTER 2D', 64, '#3ee8ff').setOrigin(0.5);
     this.tweens.add({ targets: titulo, scale: 1.05, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' });

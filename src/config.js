@@ -4,12 +4,12 @@ export const ALTO = 600;
 export const MUNDO = {
   ancho: 1600,
   alto: 1200,
+  borde: 70,
   suavizadoCamara: 0.12
 };
 
 export const COLORES = {
   fondo: 0x0b0e1a,
-  rejilla: 0x161b2e,
   jugador: 0x3ee8ff,
   bala: 0xfff27a,
   borde: 0xffffff
@@ -44,15 +44,15 @@ export const ENEMIGOS = {
   flashMs: 70,
   zigzag: 0.35,
   tipos: {
-    normal: { vida: 2, velocidad: 85, radio: 13, puntos: 10, color: 0xff4d6d },
-    rapido: { vida: 1, velocidad: 155, radio: 9, puntos: 15, color: 0xffa62b },
-    tanque: { vida: 8, velocidad: 48, radio: 22, puntos: 40, color: 0xa66bff },
+    normal: { vida: 2, velocidad: 85, radio: 13, puntos: 10, sangre: 0x8a1010 },
+    rapido: { vida: 1, velocidad: 155, radio: 9, puntos: 15, sangre: 0xa31515 },
+    tanque: { vida: 8, velocidad: 48, radio: 22, puntos: 40, sangre: 0x5e0b0b },
     tirador: {
       vida: 3,
       velocidad: 75,
       radio: 12,
       puntos: 25,
-      color: 0x5cff5c,
+      sangre: 0x9be22d,
       distancia: 260,
       tolerancia: 40,
       alcanceExtra: 120,
