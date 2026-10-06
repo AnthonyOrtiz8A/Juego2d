@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { ANCHO, ALTO, COLORES } from './config.js';
 import BootScene from './scenes/BootScene.js';
+import MenuScene from './scenes/MenuScene.js';
 import GameScene from './scenes/GameScene.js';
+import GameOverScene from './scenes/GameOverScene.js';
 
 const juego = new Phaser.Game({
   type: Phaser.AUTO,
@@ -18,7 +20,7 @@ const juego = new Phaser.Game({
     default: 'arcade',
     arcade: { debug: false }
   },
-  scene: [BootScene, GameScene]
+  scene: [BootScene, MenuScene, GameScene, GameOverScene]
 });
 
 if (import.meta.env.DEV) window.juego = juego;

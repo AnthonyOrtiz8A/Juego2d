@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORES, ENEMIGOS } from '../config.js';
+import { ANCHO, ALTO, COLORES, ENEMIGOS } from '../config.js';
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -7,6 +7,14 @@ export default class BootScene extends Phaser.Scene {
   }
 
   create() {
+    this.crearTextura('fondo', ANCHO, ALTO, (g) => {
+      g.fillStyle(COLORES.fondo, 1);
+      g.fillRect(0, 0, ANCHO, ALTO);
+      g.lineStyle(1, COLORES.rejilla, 1);
+      for (let x = 0; x <= ANCHO; x += 40) g.lineBetween(x + 0.5, 0, x + 0.5, ALTO);
+      for (let y = 0; y <= ALTO; y += 40) g.lineBetween(0, y + 0.5, ANCHO, y + 0.5);
+    });
+
     this.crearTextura('jugador', 36, 36, (g) => {
       g.fillStyle(COLORES.jugador, 1);
       g.lineStyle(2, COLORES.borde, 1);
@@ -34,7 +42,7 @@ export default class BootScene extends Phaser.Scene {
       g.fillRect(0, 0, 6, 6);
     });
 
-    this.scene.start('Game');
+    this.scene.start('Menu');
   }
 
   crearEnemigos() {

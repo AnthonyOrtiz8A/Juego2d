@@ -1,9 +1,16 @@
 import Phaser from 'phaser';
-import { ANCHO, ALTO, COLORES, BALA, ENEMIGOS, EFECTOS } from '../config.js';
+import { ANCHO, ALTO, COLORES, JUGADOR, BALA, ENEMIGOS, EFECTOS } from '../config.js';
 import Player from '../entities/Player.js';
 import Bullet from '../entities/Bullet.js';
 import Enemy from '../entities/Enemy.js';
 import WaveManager from '../systems/WaveManager.js';
+import Storage from '../systems/Storage.js';
+import Sonido from '../systems/Sonido.js';
+import { crearTexto, crearBoton } from '../systems/Interfaz.js';
+
+const PROFUNDIDAD_HUD = 30;
+const PROFUNDIDAD_PAUSA = 50;
+const ESPERA_FIN_MS = 900;
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -11,7 +18,13 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
-    this.dibujarFondo();
+    this.add.image(0, 0, 'fondo').setOrigin(0);
+
+    this.puntos = 0;
+    this.record = Storage.obtenerRecord();
+    this.pausado = false;
+    this.terminado = false;
+
     this.jugador = new Player(this, ANCHO / 2, ALTO / 2);
     this.balas = this.crearPool(Bullet, BALA.poolMax);
     this.enemigos = this.crearPool(Enemy, ENEMIGOS.poolMax);
@@ -27,30 +40,115 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.jugador, this.enemigos, this.alChocar, null, this);
 
     this.teclas = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT,SPACE');
+    this.input.keyboard.on('keydown-P', this.alternarPausa, this);
+    this.input.keyboard.on('keydown-ESC', this.alternarPausa, this);
 
+    this.crearHud();
     this.crearAnuncio();
-    this.events.on('oleada', (numero) => this.anunciar('Oleada ' + numero));
-    this.events.on('oleadaCompletada', () => this.anunciar('¡Oleada superada!'));
+    this.crearMenuPausa();
 
-    this.events.once('shutdown', () => {
-      this.events.off('oleada');
-      this.events.off('oleadaCompletada');
-      this.oleadas.detener();
-    });
+    this.events.on('oleada', this.alIniciarOleada, this);
+    this.events.on('oleadaCompletada', this.alCompletarOleada, this);
+    this.game.events.on(Phaser.Core.Events.BLUR, this.pausarPorFoco, this);
+    this.game.events.on(Phaser.Core.Events.HIDDEN, this.pausarPorFoco, this);
+    this.events.once('shutdown', this.limpiar, this);
 
     this.oleadas = new WaveManager(this);
     this.oleadas.iniciar();
   }
 
+  limpiar() {
+    this.events.off('oleada', this.alIniciarOleada, this);
+    this.events.off('oleadaCompletada', this.alCompletarOleada, this);
+    this.game.events.off(Phaser.Core.Events.BLUR, this.pausarPorFoco, this);
+    this.game.events.off(Phaser.Core.Events.HIDDEN, this.pausarPorFoco, this);
+    this.oleadas.detener();
+  }
+
+  crearPool(clase, maximo) {
+    const grupo = this.physics.add.group({ classType: clase, maxSize: maximo, runChildUpdate: false });
+    for (let i = 0; i < maximo; i++) grupo.create(-100, -100).desactivar();
+    return grupo;
+  }
+
+  crearHud() {
+    this.textoPuntos = crearTexto(this, 16, 10, 'Puntos: 0', 22).setDepth(PROFUNDIDAD_HUD);
+    this.textoRecord = crearTexto(this, 16, 38, 'Récord: ' + this.record, 14, '#fff27a').setDepth(PROFUNDIDAD_HUD);
+    this.textoOleada = crearTexto(this, ANCHO / 2, 10, 'Oleada 1', 22).setOrigin(0.5, 0).setDepth(PROFUNDIDAD_HUD);
+
+    this.iconosVida = [];
+    for (let i = 0; i < JUGADOR.vidas; i++) {
+      const icono = this.add.image(28 + i * 26, 76, 'jugador').setScale(0.55).setRotation(-Math.PI / 2).setDepth(PROFUNDIDAD_HUD);
+      this.iconosVida.push(icono);
+    }
+
+    const pausa = crearBoton(this, ANCHO - 34, 32, 'II', () => this.alternarPausa(), 48, 44);
+    pausa.fondo.setDepth(PROFUNDIDAD_HUD);
+    pausa.etiqueta.setDepth(PROFUNDIDAD_HUD);
+    this.botonPausa = pausa.fondo;
+  }
+
   crearAnuncio() {
-    this.anuncio = this.add.text(ANCHO / 2, ALTO / 2 - 80, '', {
-      fontFamily: 'monospace',
-      fontSize: '40px',
-      fontStyle: 'bold',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 6
-    }).setOrigin(0.5).setDepth(20).setAlpha(0);
+    this.anuncio = crearTexto(this, ANCHO / 2, ALTO / 2 - 80, '', 40).setOrigin(0.5).setDepth(20).setAlpha(0);
+  }
+
+  crearMenuPausa() {
+    const capa = this.add.rectangle(0, 0, ANCHO, ALTO, 0x000000, 0.6).setOrigin(0).setInteractive();
+    const titulo = crearTexto(this, ANCHO / 2, 200, 'PAUSA', 56, '#3ee8ff').setOrigin(0.5);
+    const continuar = crearBoton(this, ANCHO / 2, 300, 'Continuar', () => this.reanudar());
+    const menu = crearBoton(this, ANCHO / 2, 365, 'Menú principal', () => this.scene.start('Menu'));
+
+    this.elementosPausa = [capa, titulo, continuar.fondo, continuar.etiqueta, menu.fondo, menu.etiqueta];
+    this.elementosPausa.forEach((elemento) => elemento.setDepth(PROFUNDIDAD_PAUSA));
+    this.mostrarMenuPausa(false);
+  }
+
+  mostrarMenuPausa(visible) {
+    this.elementosPausa.forEach((elemento) => {
+      elemento.setVisible(visible);
+      if (elemento.input) elemento.input.enabled = visible;
+    });
+  }
+
+  alternarPausa() {
+    if (this.pausado) this.reanudar();
+    else this.pausar();
+  }
+
+  pausarPorFoco() {
+    if (!this.pausado) this.pausar();
+  }
+
+  pausar() {
+    if (this.terminado || this.pausado) return;
+    this.pausado = true;
+    this.physics.pause();
+    this.time.paused = true;
+    this.tweens.pauseAll();
+    this.explosion.pause();
+    this.anuncio.setVisible(false);
+    this.mostrarMenuPausa(true);
+  }
+
+  reanudar() {
+    if (!this.pausado) return;
+    this.pausado = false;
+    this.physics.resume();
+    this.time.paused = false;
+    this.tweens.resumeAll();
+    this.explosion.resume();
+    this.anuncio.setVisible(true);
+    this.mostrarMenuPausa(false);
+  }
+
+  alIniciarOleada(numero) {
+    this.textoOleada.setText('Oleada ' + numero);
+    this.anunciar('Oleada ' + numero);
+    Sonido.oleada();
+  }
+
+  alCompletarOleada() {
+    this.anunciar('¡Oleada superada!');
   }
 
   anunciar(texto) {
@@ -60,17 +158,17 @@ export default class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: this.anuncio, alpha: 0, delay: 1300, duration: 400 });
   }
 
-  crearPool(clase, maximo) {
-    const grupo = this.physics.add.group({ classType: clase, maxSize: maximo, runChildUpdate: false });
-    for (let i = 0; i < maximo; i++) grupo.create(-100, -100).desactivar();
-    return grupo;
+  sumarPuntos(cantidad) {
+    this.puntos += cantidad;
+    this.textoPuntos.setText('Puntos: ' + this.puntos);
+    if (this.puntos > this.record) {
+      this.record = this.puntos;
+      this.textoRecord.setText('Récord: ' + this.record);
+    }
   }
 
-  dibujarFondo() {
-    const rejilla = this.add.graphics();
-    rejilla.lineStyle(1, COLORES.rejilla, 1);
-    for (let x = 0; x <= ANCHO; x += 40) rejilla.lineBetween(x, 0, x, ALTO);
-    for (let y = 0; y <= ALTO; y += 40) rejilla.lineBetween(0, y, ANCHO, y);
+  actualizarVidas() {
+    this.iconosVida.forEach((icono, i) => icono.setVisible(i < this.jugador.vidas));
   }
 
   generarEnemigo(tipo, multiplicadorVelocidad) {
@@ -105,20 +203,44 @@ export default class GameScene extends Phaser.Scene {
   alImpactar(bala, enemigo) {
     if (!bala.active || !enemigo.active) return;
     bala.desactivar();
-    if (enemigo.recibirDanio(bala.danio, this.time.now)) this.eliminarEnemigo(enemigo);
+    if (!enemigo.recibirDanio(bala.danio, this.time.now)) return;
+    this.sumarPuntos(enemigo.datos.puntos);
+    Sonido.explosion();
+    this.eliminarEnemigo(enemigo);
   }
 
   alChocar(jugador, enemigo) {
-    if (!enemigo.active || !jugador.recibirDanio(this.time.now)) return;
+    if (this.terminado || !enemigo.active || !jugador.recibirDanio(this.time.now)) return;
     this.eliminarEnemigo(enemigo);
+    this.actualizarVidas();
     this.cameras.main.shake(EFECTOS.sacudidaMs, EFECTOS.sacudidaIntensidad);
-    if (jugador.vidas <= 0) this.scene.restart();
+    Sonido.danio();
+    if (jugador.vidas <= 0) this.terminarPartida();
   }
 
   eliminarEnemigo(enemigo) {
     this.explotar(enemigo.x, enemigo.y, enemigo.datos.color);
     enemigo.desactivar();
-    this.oleadas.verificarFin();
+    if (!this.terminado) this.oleadas.verificarFin();
+  }
+
+  terminarPartida() {
+    this.terminado = true;
+    this.oleadas.detener();
+    this.physics.pause();
+    this.explotar(this.jugador.x, this.jugador.y, COLORES.jugador);
+    this.explotar(this.jugador.x, this.jugador.y, COLORES.borde);
+    this.jugador.setVisible(false);
+    this.botonPausa.input.enabled = false;
+    const nuevoRecord = Storage.guardarRecord(this.puntos);
+    this.time.delayedCall(ESPERA_FIN_MS, () => {
+      this.scene.start('GameOver', {
+        puntos: this.puntos,
+        record: Storage.obtenerRecord(),
+        nuevoRecord,
+        oleada: this.oleadas.oleada
+      });
+    });
   }
 
   disparar(tiempo) {
@@ -129,9 +251,12 @@ export default class GameScene extends Phaser.Scene {
     const x = this.jugador.x + Math.cos(angulo) * BALA.distanciaCanon;
     const y = this.jugador.y + Math.sin(angulo) * BALA.distanciaCanon;
     bala.disparar(x, y, angulo, tiempo);
+    Sonido.disparo();
   }
 
   update(time) {
+    if (this.pausado || this.terminado) return;
+
     const t = this.teclas;
     const dx = (t.D.isDown || t.RIGHT.isDown ? 1 : 0) - (t.A.isDown || t.LEFT.isDown ? 1 : 0);
     const dy = (t.S.isDown || t.DOWN.isDown ? 1 : 0) - (t.W.isDown || t.UP.isDown ? 1 : 0);
