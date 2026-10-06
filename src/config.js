@@ -5,6 +5,7 @@ export const COLORES = {
   fondo: 0x0b0e1a,
   rejilla: 0x161b2e,
   jugador: 0x3ee8ff,
+  bala: 0xfff27a,
   borde: 0xffffff
 };
 
@@ -14,4 +15,12 @@ export const JUGADOR = {
   vidas: 3,
   invulnerabilidadMs: 1500,
   cadenciaMs: 110
+};
+
+export const BALA = {
+  velocidad: 640,
+  danio: 1,
+  vidaMs: 1100,
+  poolMax: 60,
+  distanciaCanon: 20
 };

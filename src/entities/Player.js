@@ -23,6 +23,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.setVelocity(dx * JUGADOR.velocidad, dy * JUGADOR.velocidad);
   }
 
+  puedeDisparar(tiempo) {
+    if (tiempo < this.proximoDisparo) return false;
+    this.proximoDisparo = tiempo + JUGADOR.cadenciaMs;
+    return true;
+  }
+
   apuntarA(x, y) {
     this.rotation = Math.atan2(y - this.y, x - this.x);
   }

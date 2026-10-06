@@ -20,6 +20,13 @@ export default class BootScene extends Phaser.Scene {
       g.strokePath();
     });
 
+    this.crearTextura('bala', 10, 10, (g) => {
+      g.fillStyle(COLORES.bala, 0.35);
+      g.fillCircle(5, 5, 5);
+      g.fillStyle(COLORES.bala, 1);
+      g.fillCircle(5, 5, 3);
+    });
+
     this.scene.start('Game');
   }
 
