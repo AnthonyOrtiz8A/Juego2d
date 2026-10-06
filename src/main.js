@@ -3,7 +3,7 @@ import { ANCHO, ALTO, COLORES } from './config.js';
 import BootScene from './scenes/BootScene.js';
 import GameScene from './scenes/GameScene.js';
 
-new Phaser.Game({
+const juego = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'juego',
   width: ANCHO,
@@ -20,3 +20,5 @@ new Phaser.Game({
   },
   scene: [BootScene, GameScene]
 });
+
+if (import.meta.env.DEV) window.juego = juego;
