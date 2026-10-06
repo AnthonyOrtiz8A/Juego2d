@@ -10,6 +10,23 @@ Shooter top-down de arena con oleadas infinitas, hecho con **Phaser 3** y **Vite
 | Apuntar  | Mouse                         | Automático al enemigo más cercano                  |
 | Disparar | Clic izquierdo (mantener) o Espacio | Mantener pulsada la mitad derecha            |
 | Pausa    | P o Esc                       | Botón **II** (arriba a la derecha)                 |
+| Habilidad 1 | E                          | Botón **E** (sobre el botón de disparo)            |
+| Habilidad 2 | Q (desde la oleada 4)      | Botón **Q** (a la izquierda del disparo)           |
+
+### Habilidades
+
+Empiezas con **Impulso** en la tecla E. Al terminar la oleada 3 se desbloquea la tecla Q y eliges tu segunda habilidad. Cada 2 oleadas (2, 4, 6…) puedes elegir uno de 3 poderes al azar para reemplazar uno de los tuyos, o mantener los que tienes.
+
+| Poder          | Efecto                                              | Enfriamiento |
+|----------------|-----------------------------------------------------|--------------|
+| Impulso        | Dash rápido en la dirección de movimiento, invulnerable | 2,5 s    |
+| Escudo         | 3,5 s de burbuja que destruye a los enemigos que te tocan | 12 s   |
+| Onda expansiva | Daña (4) y empuja a los enemigos cercanos           | 9 s          |
+| Ráfaga         | 16 balas en todas las direcciones                   | 6 s          |
+| Frenesí        | Triplica la cadencia de disparo durante 4 s         | 14 s         |
+| Congelación    | Enemigos al 30 % de velocidad durante 4 s           | 15 s         |
+
+Los enfriamientos se detienen mientras el juego está en pausa o eligiendo poder. Todos los valores se ajustan en `HABILIDADES` dentro de `src/config.js`.
 
 - Tipos de enemigo: **normal** (rojo), **rápido** (naranja, poca vida) y **tanque** (morado, lento y resistente).
 - Tienes 3 vidas y un breve tiempo de invulnerabilidad tras recibir daño.
@@ -89,14 +106,15 @@ Como `vite.config.js` usa `base: './'`, el build funciona en cualquier ruta sin 
     ├── config.js            Valores de balance (velocidades, vida, cadencia, oleadas…)
     ├── scenes/              Boot (genera texturas), Menu, Game, GameOver
     ├── entities/            Player, Enemy, Bullet
-    └── systems/             WaveManager, TouchControls, Storage, Sonido, Interfaz
+    └── systems/             WaveManager, TouchControls, Storage, Sonido, Interfaz,
+                             Habilidades, BotonesHabilidad, SelectorHabilidades
 ```
 
 Para ajustar la dificultad, edita `src/config.js`.
 
 ## Rendimiento
 
-- Balas (60) y enemigos (120) se reutilizan desde pools creados al inicio; no se crean ni destruyen objetos durante la partida.
+- Balas (90) y enemigos (120) se reutilizan desde pools creados al inicio; no se crean ni destruyen objetos durante la partida.
 - Fondo prerenderizado en una textura; el HUD solo se actualiza cuando cambian los valores.
 - Partículas limitadas (máx. 120 vivas, 280 ms de vida).
 - Prueba de estrés: con 100 enemigos en pantalla, disparo continuo y CPU limitada 6× en Chrome, el juego se mantuvo a 60 FPS con ~4 ms de CPU por frame.

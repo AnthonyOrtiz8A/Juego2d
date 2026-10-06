@@ -25,7 +25,7 @@ export default class MenuScene extends Phaser.Scene {
       botonSonido.etiqueta.setText(this.textoSonido());
     });
 
-    crearTexto(this, ANCHO / 2, 475, this.textoControles(), 16, '#9aa4c7').setOrigin(0.5).setLineSpacing(6);
+    crearTexto(this, ANCHO / 2, 490, this.textoControles(), 16, '#9aa4c7').setOrigin(0.5).setLineSpacing(6);
 
     this.input.keyboard.on('keydown-ENTER', () => this.jugar());
     this.input.keyboard.on('keydown-SPACE', (evento) => {
@@ -39,9 +39,9 @@ export default class MenuScene extends Phaser.Scene {
 
   textoControles() {
     if (esDispositivoTactil(this.game)) {
-      return 'Mover: joystick (lado izquierdo)\nDisparar: mantén pulsado el lado derecho (apunta solo)';
+      return 'Mover: joystick (lado izquierdo)\nDisparar: mantén pulsado el lado derecho (apunta solo)\nHabilidades: botones E y Q (Q desde la oleada 4)';
     }
-    return 'Mover: WASD o flechas   ·   Apuntar: mouse\nDisparar: clic izquierdo (mantener)   ·   Pausa: P o Esc';
+    return 'Mover: WASD o flechas   ·   Apuntar: mouse\nDisparar: clic izquierdo (mantener)   ·   Pausa: P o Esc\nHabilidades: E   ·   Q (desde la oleada 4)';
   }
 
   jugar() {

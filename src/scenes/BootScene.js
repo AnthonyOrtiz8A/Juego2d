@@ -44,6 +44,18 @@ export default class BootScene extends Phaser.Scene {
 
     this.crearControlesTactiles();
 
+    this.crearTextura('escudo', 64, 64, (g) => {
+      g.fillStyle(0x7dffb0, 0.15);
+      g.fillCircle(32, 32, 28);
+      g.lineStyle(3, 0x7dffb0, 0.9);
+      g.strokeCircle(32, 32, 28);
+    });
+
+    this.crearTextura('onda', 132, 132, (g) => {
+      g.lineStyle(6, 0xffffff, 1);
+      g.strokeCircle(66, 66, 62);
+    });
+
     this.scene.start('Menu');
   }
 

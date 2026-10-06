@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { JUGADOR } from '../config.js';
+import { JUGADOR, HABILIDADES } from '../config.js';
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
@@ -12,9 +12,19 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.vidas = JUGADOR.vidas;
     this.invulnerableHasta = 0;
     this.proximoDisparo = 0;
+    this.dashHasta = 0;
+    this.dashVx = 0;
+    this.dashVy = 0;
+    this.escudoHasta = 0;
+    this.frenesiHasta = 0;
+    this.enFrenesi = false;
   }
 
-  mover(dx, dy) {
+  mover(dx, dy, reloj) {
+    if (reloj < this.dashHasta) {
+      this.body.setVelocity(this.dashVx, this.dashVy);
+      return;
+    }
     const largo = Math.hypot(dx, dy);
     if (largo > 1) {
       dx /= largo;
@@ -23,9 +33,28 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.setVelocity(dx * JUGADOR.velocidad, dy * JUGADOR.velocidad);
   }
 
+  iniciarDash(hasta, vx, vy) {
+    this.dashHasta = hasta;
+    this.dashVx = vx;
+    this.dashVy = vy;
+  }
+
+  tieneEscudo(reloj) {
+    return reloj < this.escudoHasta;
+  }
+
+  actualizarEfectos(reloj) {
+    const frenesi = reloj < this.frenesiHasta;
+    if (frenesi === this.enFrenesi) return;
+    this.enFrenesi = frenesi;
+    if (frenesi) this.setTint(HABILIDADES.tipos.frenesi.color);
+    else this.clearTint();
+  }
+
   puedeDisparar(tiempo) {
     if (tiempo < this.proximoDisparo) return false;
-    this.proximoDisparo = tiempo + JUGADOR.cadenciaMs;
+    const multiplicador = this.enFrenesi ? HABILIDADES.tipos.frenesi.multiplicadorCadencia : 1;
+    this.proximoDisparo = tiempo + JUGADOR.cadenciaMs / multiplicador;
     return true;
   }
 

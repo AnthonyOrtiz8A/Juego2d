@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ANCHO, ALTO, COLORES, JUGADOR, BALA, ENEMIGOS, EFECTOS, TACTIL } from '../config.js';
+import { ANCHO, ALTO, COLORES, JUGADOR, BALA, ENEMIGOS, EFECTOS, TACTIL, HABILIDADES } from '../config.js';
 import Player from '../entities/Player.js';
 import Bullet from '../entities/Bullet.js';
 import Enemy from '../entities/Enemy.js';
@@ -7,6 +7,9 @@ import WaveManager from '../systems/WaveManager.js';
 import Storage from '../systems/Storage.js';
 import Sonido from '../systems/Sonido.js';
 import TouchControls from '../systems/TouchControls.js';
+import GestorHabilidades from '../systems/Habilidades.js';
+import BotonesHabilidad from '../systems/BotonesHabilidad.js';
+import SelectorHabilidades from '../systems/SelectorHabilidades.js';
 import { crearTexto, crearBoton } from '../systems/Interfaz.js';
 
 const PROFUNDIDAD_HUD = 30;
@@ -25,6 +28,9 @@ export default class GameScene extends Phaser.Scene {
     this.record = Storage.obtenerRecord();
     this.pausado = false;
     this.terminado = false;
+    this.eligiendo = false;
+    this.reloj = 0;
+    this.congeladoHasta = 0;
 
     this.jugador = new Player(this, ANCHO / 2, ALTO / 2);
     this.balas = this.crearPool(Bullet, BALA.poolMax);
@@ -36,6 +42,8 @@ export default class GameScene extends Phaser.Scene {
       emitting: false,
       maxAliveParticles: EFECTOS.particulasMax
     }).setDepth(8);
+    this.escudo = this.add.image(0, 0, 'escudo').setDepth(11).setVisible(false);
+    this.onda = this.add.image(0, 0, 'onda').setDepth(9).setVisible(false);
 
     this.physics.add.overlap(this.balas, this.enemigos, this.alImpactar, null, this);
     this.physics.add.overlap(this.jugador, this.enemigos, this.alChocar, null, this);
@@ -43,9 +51,14 @@ export default class GameScene extends Phaser.Scene {
     this.teclas = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT,SPACE');
     this.input.keyboard.on('keydown-P', this.alternarPausa, this);
     this.input.keyboard.on('keydown-ESC', this.alternarPausa, this);
+    this.input.keyboard.on('keydown-E', () => this.usarHabilidad('E'));
+    this.input.keyboard.on('keydown-Q', () => this.usarHabilidad('Q'));
 
     this.crearHud();
     this.controlesTactiles = new TouchControls(this);
+    this.habilidades = new GestorHabilidades(this);
+    this.botonesHabilidad = new BotonesHabilidad(this, this.habilidades);
+    this.selector = new SelectorHabilidades(this, this.habilidades, () => this.terminarEleccion());
     this.crearAnuncio();
     this.crearMenuPausa();
 
@@ -113,17 +126,16 @@ export default class GameScene extends Phaser.Scene {
   }
 
   alternarPausa() {
+    if (this.eligiendo) return;
     if (this.pausado) this.reanudar();
     else this.pausar();
   }
 
   pausarPorFoco() {
-    if (!this.pausado) this.pausar();
+    if (!this.pausado && !this.eligiendo) this.pausar();
   }
 
-  pausar() {
-    if (this.terminado || this.pausado) return;
-    this.pausado = true;
+  detenerMundo() {
     this.physics.pause();
     this.time.paused = true;
     this.tweens.pauseAll();
@@ -131,19 +143,62 @@ export default class GameScene extends Phaser.Scene {
     this.anuncio.setVisible(false);
     this.controlesTactiles.reiniciar();
     this.controlesTactiles.mostrar(false);
-    this.mostrarMenuPausa(true);
+    this.botonesHabilidad.mostrar(false);
   }
 
-  reanudar() {
-    if (!this.pausado) return;
-    this.pausado = false;
+  reanudarMundo() {
     this.physics.resume();
     this.time.paused = false;
     this.tweens.resumeAll();
     this.explosion.resume();
     this.anuncio.setVisible(true);
     this.controlesTactiles.mostrar(true);
+    this.botonesHabilidad.mostrar(true);
+  }
+
+  pausar() {
+    if (this.terminado || this.pausado || this.eligiendo) return;
+    this.pausado = true;
+    this.detenerMundo();
+    this.mostrarMenuPausa(true);
+  }
+
+  reanudar() {
+    if (!this.pausado) return;
+    this.pausado = false;
+    this.reanudarMundo();
     this.mostrarMenuPausa(false);
+  }
+
+  iniciarEleccion(desbloqueo) {
+    if (this.terminado) return;
+    this.eligiendo = true;
+    this.detenerMundo();
+    this.selector.mostrar(desbloqueo);
+  }
+
+  terminarEleccion() {
+    this.eligiendo = false;
+    this.reanudarMundo();
+  }
+
+  usarHabilidad(tecla) {
+    if (this.pausado || this.terminado || this.eligiendo) return;
+    if (this.habilidades.usar(tecla, this.reloj)) Sonido.habilidad();
+  }
+
+  mostrarOnda(color, radio) {
+    this.tweens.killTweensOf(this.onda);
+    const escalaFinal = radio / 64;
+    this.onda.setPosition(this.jugador.x, this.jugador.y).setTint(color).setVisible(true).setAlpha(1).setScale(0.2);
+    this.tweens.add({
+      targets: this.onda,
+      scale: escalaFinal,
+      alpha: 0,
+      duration: 320,
+      ease: 'Cubic.Out',
+      onComplete: () => this.onda.setVisible(false)
+    });
   }
 
   alIniciarOleada(numero) {
@@ -152,8 +207,12 @@ export default class GameScene extends Phaser.Scene {
     Sonido.oleada();
   }
 
-  alCompletarOleada() {
+  alCompletarOleada(numero) {
     this.anunciar('¡Oleada superada!');
+    const desbloqueo = numero === HABILIDADES.oleadaSegundaRanura - 1 && !this.habilidades.desbloqueada('Q');
+    if (desbloqueo || numero % HABILIDADES.cadaOleadas === 0) {
+      this.time.delayedCall(HABILIDADES.esperaSelectorMs, () => this.iniciarEleccion(desbloqueo));
+    }
   }
 
   anunciar(texto) {
@@ -215,7 +274,13 @@ export default class GameScene extends Phaser.Scene {
   }
 
   alChocar(jugador, enemigo) {
-    if (this.terminado || !enemigo.active || !jugador.recibirDanio(this.time.now)) return;
+    if (this.terminado || !enemigo.active) return;
+    if (jugador.tieneEscudo(this.reloj)) {
+      this.sumarPuntos(enemigo.datos.puntos);
+      this.eliminarEnemigo(enemigo);
+      return;
+    }
+    if (!jugador.recibirDanio(this.time.now)) return;
     this.eliminarEnemigo(enemigo);
     this.actualizarVidas();
     this.cameras.main.shake(EFECTOS.sacudidaMs, EFECTOS.sacudidaIntensidad);
@@ -236,6 +301,8 @@ export default class GameScene extends Phaser.Scene {
     this.explotar(this.jugador.x, this.jugador.y, COLORES.jugador);
     this.explotar(this.jugador.x, this.jugador.y, COLORES.borde);
     this.jugador.setVisible(false);
+    this.escudo.setVisible(false);
+    this.botonesHabilidad.mostrar(false);
     this.botonPausa.input.enabled = false;
     const nuevoRecord = Storage.guardarRecord(this.puntos);
     this.time.delayedCall(ESPERA_FIN_MS, () => {
@@ -277,8 +344,9 @@ export default class GameScene extends Phaser.Scene {
     return mejor;
   }
 
-  update(time) {
-    if (this.pausado || this.terminado) return;
+  update(time, delta) {
+    if (this.pausado || this.terminado || this.eligiendo) return;
+    this.reloj += delta;
 
     const t = this.teclas;
     const tactil = this.controlesTactiles;
@@ -288,7 +356,10 @@ export default class GameScene extends Phaser.Scene {
       dx = tactil.dx;
       dy = tactil.dy;
     }
-    this.jugador.mover(dx, dy);
+    this.jugador.mover(dx, dy, this.reloj);
+    this.jugador.actualizarEfectos(this.reloj);
+    this.escudo.setVisible(this.jugador.tieneEscudo(this.reloj)).setPosition(this.jugador.x, this.jugador.y);
+    this.botonesHabilidad.actualizar(this.reloj);
 
     const puntero = this.input.mousePointer;
     let disparando = puntero.leftButtonDown() || t.SPACE.isDown;

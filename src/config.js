@@ -21,7 +21,7 @@ export const BALA = {
   velocidad: 640,
   danio: 1,
   vidaMs: 1100,
-  poolMax: 60,
+  poolMax: 90,
   distanciaCanon: 20
 };
 
@@ -76,4 +76,20 @@ export const EFECTOS = {
   vidaParticulaMs: 280,
   sacudidaMs: 160,
   sacudidaIntensidad: 0.008
+};
+
+export const HABILIDADES = {
+  inicial: 'dash',
+  cadaOleadas: 2,
+  oleadaSegundaRanura: 4,
+  opcionesPorEleccion: 3,
+  esperaSelectorMs: 700,
+  tipos: {
+    dash: { enfriamientoMs: 2500, duracionMs: 170, velocidad: 950, color: 0x3ee8ff },
+    escudo: { enfriamientoMs: 12000, duracionMs: 3500, color: 0x7dffb0 },
+    onda: { enfriamientoMs: 9000, radio: 180, danio: 4, empuje: 60, color: 0xfff27a },
+    rafaga: { enfriamientoMs: 6000, balas: 16, color: 0xffa62b },
+    frenesi: { enfriamientoMs: 14000, duracionMs: 4000, multiplicadorCadencia: 3, color: 0xff4d6d },
+    congelar: { enfriamientoMs: 15000, duracionMs: 4000, factorVelocidad: 0.3, color: 0x8fd3ff }
+  }
 };
