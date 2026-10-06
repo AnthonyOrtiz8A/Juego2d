@@ -37,6 +37,26 @@ export const ENEMIGOS = {
   }
 };
 
+export const OLEADAS = {
+  enemigosBase: 6,
+  enemigosPorOleada: 4,
+  incrementoVelocidad: 0.06,
+  multiplicadorVelocidadMax: 1.9,
+  intervaloBaseMs: 900,
+  reduccionIntervaloMs: 70,
+  intervaloMinMs: 200,
+  oleadasPorGrupoExtra: 3,
+  maximoSimultaneos: 110,
+  pausaEntreOleadasMs: 2200,
+  oleadaRapidos: 2,
+  oleadaTanques: 3,
+  probabilidadRapidoBase: 0.15,
+  probabilidadRapidoMax: 0.4,
+  probabilidadTanqueBase: 0.08,
+  probabilidadTanqueMax: 0.22,
+  incrementoProbabilidad: 0.03
+};
+
 export const EFECTOS = {
   particulasPorExplosion: 8,
   particulasMax: 120,

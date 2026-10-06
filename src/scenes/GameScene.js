@@ -3,8 +3,7 @@ import { ANCHO, ALTO, COLORES, BALA, ENEMIGOS, EFECTOS } from '../config.js';
 import Player from '../entities/Player.js';
 import Bullet from '../entities/Bullet.js';
 import Enemy from '../entities/Enemy.js';
-
-const TIPOS = Object.keys(ENEMIGOS.tipos);
+import WaveManager from '../systems/WaveManager.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -29,11 +28,36 @@ export default class GameScene extends Phaser.Scene {
 
     this.teclas = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT,SPACE');
 
-    this.time.addEvent({
-      delay: 700,
-      loop: true,
-      callback: () => this.generarEnemigo(Phaser.Utils.Array.GetRandom(TIPOS), 1)
+    this.crearAnuncio();
+    this.events.on('oleada', (numero) => this.anunciar('Oleada ' + numero));
+    this.events.on('oleadaCompletada', () => this.anunciar('¡Oleada superada!'));
+
+    this.events.once('shutdown', () => {
+      this.events.off('oleada');
+      this.events.off('oleadaCompletada');
+      this.oleadas.detener();
     });
+
+    this.oleadas = new WaveManager(this);
+    this.oleadas.iniciar();
+  }
+
+  crearAnuncio() {
+    this.anuncio = this.add.text(ANCHO / 2, ALTO / 2 - 80, '', {
+      fontFamily: 'monospace',
+      fontSize: '40px',
+      fontStyle: 'bold',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 6
+    }).setOrigin(0.5).setDepth(20).setAlpha(0);
+  }
+
+  anunciar(texto) {
+    this.tweens.killTweensOf(this.anuncio);
+    this.anuncio.setText(texto).setAlpha(1).setScale(1.3);
+    this.tweens.add({ targets: this.anuncio, scale: 1, duration: 250, ease: 'Back.Out' });
+    this.tweens.add({ targets: this.anuncio, alpha: 0, delay: 1300, duration: 400 });
   }
 
   crearPool(clase, maximo) {
@@ -94,6 +118,7 @@ export default class GameScene extends Phaser.Scene {
   eliminarEnemigo(enemigo) {
     this.explotar(enemigo.x, enemigo.y, enemigo.datos.color);
     enemigo.desactivar();
+    this.oleadas.verificarFin();
   }
 
   disparar(tiempo) {
