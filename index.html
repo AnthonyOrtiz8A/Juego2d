@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#0b0e1a" />
+    <link rel="icon" href="data:," />
     <title>Shooter 2D</title>
     <style>
       html, body {
@@ -24,10 +25,29 @@
       canvas {
         display: block;
       }
+      #girar {
+        display: none;
+        position: fixed;
+        inset: 0;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(5, 6, 12, 0.92);
+        color: #3ee8ff;
+        font: bold 20px monospace;
+        text-align: center;
+        z-index: 10;
+      }
+      @media (orientation: portrait) and (pointer: coarse) {
+        #girar {
+          display: flex;
+        }
+      }
     </style>
   </head>
   <body>
     <div id="juego"></div>
+    <div id="girar">Gira el dispositivo para jugar en horizontal</div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
