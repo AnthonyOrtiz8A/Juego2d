@@ -17,11 +17,11 @@ export default class SelectorHabilidades {
     this.alTerminar = alTerminar;
     this.elementos = [];
     this.opciones = [];
-    this.desbloqueo = false;
+    this.teclaNueva = null;
   }
 
   agregar(elemento) {
-    elemento.setDepth(PROFUNDIDAD + this.elementos.length);
+    elemento.setDepth(PROFUNDIDAD + this.elementos.length).setScrollFactor(0);
     this.elementos.push(elemento);
     return elemento;
   }
@@ -45,16 +45,15 @@ export default class SelectorHabilidades {
   }
 
   textoEquipadas() {
-    const { E, Q } = this.gestor.ranuras;
-    let texto = 'E: ' + DESCRIPCIONES[E].nombre;
-    if (Q) texto += '   ·   Q: ' + DESCRIPCIONES[Q].nombre;
-    return texto;
+    return this.gestor.teclasActivas()
+      .map((tecla) => tecla + ': ' + DESCRIPCIONES[this.gestor.ranuras[tecla]].nombre)
+      .join('   ·   ');
   }
 
-  mostrar(desbloqueo, mismasOpciones = false) {
-    this.desbloqueo = desbloqueo;
+  mostrar(teclaNueva, mismasOpciones = false) {
+    this.teclaNueva = teclaNueva;
     if (!mismasOpciones) this.opciones = this.gestor.opciones();
-    if (desbloqueo) this.base('¡Ranura Q desbloqueada!', 'Elige tu segunda habilidad (tecla Q)');
+    if (teclaNueva) this.base('¡Ranura ' + teclaNueva + ' desbloqueada!', 'Elige la habilidad para la tecla ' + teclaNueva);
     else this.base('Elige un poder', 'Equipadas  ' + this.textoEquipadas());
 
     const opciones = this.opciones;
@@ -62,7 +61,7 @@ export default class SelectorHabilidades {
     const inicioX = ANCHO / 2 - ((opciones.length - 1) * separacion) / 2;
     opciones.forEach((id, i) => this.tarjeta(inicioX + i * separacion, 300, id));
 
-    if (!desbloqueo) this.boton(ANCHO / 2, 480, 'Mantener habilidades', () => this.cerrar(), 300);
+    if (!teclaNueva) this.boton(ANCHO / 2, 480, 'Mantener habilidades', () => this.cerrar(), 300);
   }
 
   tarjeta(x, y, id) {
@@ -81,12 +80,11 @@ export default class SelectorHabilidades {
   }
 
   elegir(id) {
-    if (this.desbloqueo) {
-      this.gestor.asignar('Q', id);
-      this.cerrar();
-    } else if (!this.gestor.desbloqueada('Q')) {
-      this.gestor.asignar('E', id);
-      this.cerrar();
+    const activas = this.gestor.teclasActivas();
+    if (this.teclaNueva) {
+      this.reemplazar(this.teclaNueva, id);
+    } else if (activas.length === 1) {
+      this.reemplazar(activas[0], id);
     } else {
       this.preguntarRanura(id);
     }
@@ -94,10 +92,12 @@ export default class SelectorHabilidades {
 
   preguntarRanura(id) {
     this.base('¿Qué habilidad reemplazas?', 'Nueva: ' + DESCRIPCIONES[id].nombre);
-    const { E, Q } = this.gestor.ranuras;
-    this.boton(ANCHO / 2, 250, 'E: ' + DESCRIPCIONES[E].nombre, () => this.reemplazar('E', id), 320);
-    this.boton(ANCHO / 2, 315, 'Q: ' + DESCRIPCIONES[Q].nombre, () => this.reemplazar('Q', id), 320);
-    this.boton(ANCHO / 2, 420, 'Volver', () => this.mostrar(false, true), 320);
+    const activas = this.gestor.teclasActivas();
+    activas.forEach((tecla, i) => {
+      const actual = DESCRIPCIONES[this.gestor.ranuras[tecla]].nombre;
+      this.boton(ANCHO / 2, 230 + i * 65, tecla + ': ' + actual, () => this.reemplazar(tecla, id), 320);
+    });
+    this.boton(ANCHO / 2, 250 + activas.length * 65, 'Volver', () => this.mostrar(null, true), 320);
   }
 
   reemplazar(tecla, id) {

@@ -12,6 +12,8 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.flashHasta = 0;
     this.fase = 0;
     this.congelado = false;
+    this.proximoDisparo = 0;
+    this.sentido = 1;
     this.setDepth(5);
   }
 
@@ -28,6 +30,8 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.fase = Math.random() * Math.PI * 2;
     this.flashHasta = 0;
     this.congelado = false;
+    this.sentido = Math.random() < 0.5 ? -1 : 1;
+    if (datos.cadenciaMs) this.proximoDisparo = this.scene.reloj + Phaser.Math.Between(500, datos.cadenciaMs);
     this.clearTint();
   }
 
@@ -61,8 +65,32 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
 
     const velocidad = lento ? this.velocidad * congelacion.factorVelocidad : this.velocidad;
-    const angulo = Math.atan2(this.objetivo.y - this.y, this.objetivo.x - this.x) + Math.sin(time * 0.003 + this.fase) * ENEMIGOS.zigzag;
+    const haciaJugador = Math.atan2(this.objetivo.y - this.y, this.objetivo.x - this.x);
+
+    if (this.datos.distancia) {
+      this.comportamientoTirador(haciaJugador, velocidad, lento);
+      return;
+    }
+
+    const angulo = haciaJugador + Math.sin(time * 0.003 + this.fase) * ENEMIGOS.zigzag;
     this.body.velocity.set(Math.cos(angulo) * velocidad, Math.sin(angulo) * velocidad);
     this.rotation = angulo;
+  }
+
+  comportamientoTirador(haciaJugador, velocidad, lento) {
+    const datos = this.datos;
+    const distancia = Phaser.Math.Distance.Between(this.x, this.y, this.objetivo.x, this.objetivo.y);
+    let movimiento = haciaJugador + this.sentido * (Math.PI / 2);
+    if (distancia > datos.distancia + datos.tolerancia) movimiento = haciaJugador;
+    else if (distancia < datos.distancia - datos.tolerancia) movimiento = haciaJugador + Math.PI;
+    this.body.velocity.set(Math.cos(movimiento) * velocidad, Math.sin(movimiento) * velocidad);
+    this.rotation = haciaJugador;
+
+    const escena = this.scene;
+    if (escena.reloj < this.proximoDisparo) return;
+    if (distancia > datos.distancia + datos.alcanceExtra) return;
+    if (!escena.cameras.main.worldView.contains(this.x, this.y)) return;
+    this.proximoDisparo = escena.reloj + datos.cadenciaMs * (lento ? 2 : 1);
+    escena.dispararEnemigo(this.x, this.y, haciaJugador);
   }
 }

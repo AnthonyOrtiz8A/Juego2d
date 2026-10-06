@@ -35,6 +35,10 @@ export default class WaveManager {
       const pTanque = Math.min(OLEADAS.probabilidadTanqueBase + extra, OLEADAS.probabilidadTanqueMax);
       if (azar < pTanque) return 'tanque';
     }
+    if (this.oleada >= OLEADAS.oleadaTiradores) {
+      const pTirador = Math.min(OLEADAS.probabilidadTiradorBase + extra, OLEADAS.probabilidadTiradorMax);
+      if (Math.random() < pTirador) return 'tirador';
+    }
     if (this.oleada >= OLEADAS.oleadaRapidos) {
       const pRapido = Math.min(OLEADAS.probabilidadRapidoBase + extra, OLEADAS.probabilidadRapidoMax);
       if (Math.random() < pRapido) return 'rapido';

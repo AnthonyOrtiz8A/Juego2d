@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ANCHO, ALTO, COLORES, JUGADOR, BALA, ENEMIGOS, EFECTOS, TACTIL, HABILIDADES } from '../config.js';
+import { ANCHO, ALTO, MUNDO, COLORES, JUGADOR, BALA, BALA_ENEMIGA, ENEMIGOS, EFECTOS, TACTIL, HABILIDADES } from '../config.js';
 import Player from '../entities/Player.js';
 import Bullet from '../entities/Bullet.js';
 import Enemy from '../entities/Enemy.js';
@@ -22,7 +22,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   create() {
-    this.add.image(0, 0, 'fondo').setOrigin(0);
+    this.add.tileSprite(0, 0, MUNDO.ancho, MUNDO.alto, 'celda').setOrigin(0);
+    this.add.rectangle(0, 0, MUNDO.ancho, MUNDO.alto).setOrigin(0).setStrokeStyle(4, COLORES.jugador, 0.6);
+    this.physics.world.setBounds(0, 0, MUNDO.ancho, MUNDO.alto);
+    this.puntoMundo = new Phaser.Math.Vector2();
 
     this.puntos = 0;
     this.record = Storage.obtenerRecord();
@@ -32,8 +35,11 @@ export default class GameScene extends Phaser.Scene {
     this.reloj = 0;
     this.congeladoHasta = 0;
 
-    this.jugador = new Player(this, ANCHO / 2, ALTO / 2);
+    this.jugador = new Player(this, MUNDO.ancho / 2, MUNDO.alto / 2);
+    this.cameras.main.setBounds(0, 0, MUNDO.ancho, MUNDO.alto);
+    this.cameras.main.startFollow(this.jugador, true, MUNDO.suavizadoCamara, MUNDO.suavizadoCamara);
     this.balas = this.crearPool(Bullet, BALA.poolMax);
+    this.balasEnemigas = this.crearPool(Bullet, BALA_ENEMIGA.poolMax, 'bala-enemiga');
     this.enemigos = this.crearPool(Enemy, ENEMIGOS.poolMax);
     this.explosion = this.add.particles(0, 0, 'particula', {
       speed: { min: 60, max: 200 },
@@ -47,17 +53,21 @@ export default class GameScene extends Phaser.Scene {
 
     this.physics.add.overlap(this.balas, this.enemigos, this.alImpactar, null, this);
     this.physics.add.overlap(this.jugador, this.enemigos, this.alChocar, null, this);
+    this.physics.add.overlap(this.jugador, this.balasEnemigas, this.alRecibirDisparo, null, this);
 
     this.teclas = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT,SPACE');
     this.input.keyboard.on('keydown-P', this.alternarPausa, this);
     this.input.keyboard.on('keydown-ESC', this.alternarPausa, this);
     this.input.keyboard.on('keydown-E', () => this.usarHabilidad('E'));
     this.input.keyboard.on('keydown-Q', () => this.usarHabilidad('Q'));
+    this.input.keyboard.on('keydown-R', () => this.usarHabilidad('R'));
 
     this.crearHud();
     this.controlesTactiles = new TouchControls(this);
     this.habilidades = new GestorHabilidades(this);
-    this.botonesHabilidad = new BotonesHabilidad(this, this.habilidades);
+    this.modoTactil = this.controlesTactiles.activo;
+    this.botonesHabilidad = new BotonesHabilidad(this, this.habilidades, this.modoTactil);
+    this.mostrarBotonPausa(this.modoTactil);
     this.selector = new SelectorHabilidades(this, this.habilidades, () => this.terminarEleccion());
     this.crearAnuncio();
     this.crearMenuPausa();
@@ -80,9 +90,16 @@ export default class GameScene extends Phaser.Scene {
     this.oleadas.detener();
   }
 
-  crearPool(clase, maximo) {
+  crearPool(clase, maximo, textura) {
     const grupo = this.physics.add.group({ classType: clase, maxSize: maximo, runChildUpdate: false });
-    for (let i = 0; i < maximo; i++) grupo.create(-100, -100).desactivar();
+    for (let i = 0; i < maximo; i++) {
+      const objeto = grupo.create(-100, -100);
+      if (textura) {
+        objeto.setTexture(textura);
+        objeto.body.setSize();
+      }
+      objeto.desactivar();
+    }
     return grupo;
   }
 
@@ -93,7 +110,7 @@ export default class GameScene extends Phaser.Scene {
 
     this.iconosVida = [];
     for (let i = 0; i < JUGADOR.vidas; i++) {
-      const icono = this.add.image(28 + i * 26, 76, 'jugador').setScale(0.55).setRotation(-Math.PI / 2).setDepth(PROFUNDIDAD_HUD);
+      const icono = this.add.image(28 + i * 26, 76, 'jugador').setScale(0.55).setRotation(-Math.PI / 2).setScrollFactor(0).setDepth(PROFUNDIDAD_HUD);
       this.iconosVida.push(icono);
     }
 
@@ -101,6 +118,20 @@ export default class GameScene extends Phaser.Scene {
     pausa.fondo.setDepth(PROFUNDIDAD_HUD);
     pausa.etiqueta.setDepth(PROFUNDIDAD_HUD);
     this.botonPausa = pausa.fondo;
+    this.etiquetaPausa = pausa.etiqueta;
+  }
+
+  mostrarBotonPausa(visible) {
+    this.botonPausa.setVisible(visible);
+    this.etiquetaPausa.setVisible(visible);
+    this.botonPausa.input.enabled = visible && !this.terminado;
+  }
+
+  revisarModoTactil() {
+    if (this.controlesTactiles.activo === this.modoTactil) return;
+    this.modoTactil = this.controlesTactiles.activo;
+    this.botonesHabilidad.cambiarModo(this.modoTactil);
+    this.mostrarBotonPausa(this.modoTactil);
   }
 
   crearAnuncio() {
@@ -108,7 +139,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   crearMenuPausa() {
-    const capa = this.add.rectangle(0, 0, ANCHO, ALTO, 0x000000, 0.6).setOrigin(0).setInteractive();
+    const capa = this.add.rectangle(0, 0, ANCHO, ALTO, 0x000000, 0.6).setOrigin(0).setScrollFactor(0).setInteractive();
     const titulo = crearTexto(this, ANCHO / 2, 200, 'PAUSA', 56, '#3ee8ff').setOrigin(0.5);
     const continuar = crearBoton(this, ANCHO / 2, 300, 'Continuar', () => this.reanudar());
     const menu = crearBoton(this, ANCHO / 2, 365, 'Menú principal', () => this.scene.start('Menu'));
@@ -170,11 +201,11 @@ export default class GameScene extends Phaser.Scene {
     this.mostrarMenuPausa(false);
   }
 
-  iniciarEleccion(desbloqueo) {
+  iniciarEleccion(teclaNueva) {
     if (this.terminado) return;
     this.eligiendo = true;
     this.detenerMundo();
-    this.selector.mostrar(desbloqueo);
+    this.selector.mostrar(teclaNueva);
   }
 
   terminarEleccion() {
@@ -209,9 +240,9 @@ export default class GameScene extends Phaser.Scene {
 
   alCompletarOleada(numero) {
     this.anunciar('¡Oleada superada!');
-    const desbloqueo = numero === HABILIDADES.oleadaSegundaRanura - 1 && !this.habilidades.desbloqueada('Q');
-    if (desbloqueo || numero % HABILIDADES.cadaOleadas === 0) {
-      this.time.delayedCall(HABILIDADES.esperaSelectorMs, () => this.iniciarEleccion(desbloqueo));
+    const teclaNueva = this.habilidades.teclaPorDesbloquear(numero);
+    if (teclaNueva || numero % HABILIDADES.cadaOleadas === 0) {
+      this.time.delayedCall(HABILIDADES.esperaSelectorMs, () => this.iniciarEleccion(teclaNueva));
     }
   }
 
@@ -238,25 +269,33 @@ export default class GameScene extends Phaser.Scene {
   generarEnemigo(tipo, multiplicadorVelocidad) {
     const enemigo = this.enemigos.getFirstDead(false);
     if (!enemigo) return false;
+    const vista = this.cameras.main.worldView;
     const m = ENEMIGOS.margenAparicion;
     const lado = Phaser.Math.Between(0, 3);
     let x;
     let y;
     if (lado === 0) {
-      x = Phaser.Math.Between(0, ANCHO);
-      y = -m;
+      x = Phaser.Math.Between(vista.x, vista.right);
+      y = vista.y - m;
     } else if (lado === 1) {
-      x = ANCHO + m;
-      y = Phaser.Math.Between(0, ALTO);
+      x = vista.right + m;
+      y = Phaser.Math.Between(vista.y, vista.bottom);
     } else if (lado === 2) {
-      x = Phaser.Math.Between(0, ANCHO);
-      y = ALTO + m;
+      x = Phaser.Math.Between(vista.x, vista.right);
+      y = vista.bottom + m;
     } else {
-      x = -m;
-      y = Phaser.Math.Between(0, ALTO);
+      x = vista.x - m;
+      y = Phaser.Math.Between(vista.y, vista.bottom);
     }
     enemigo.aparecer(tipo, x, y, multiplicadorVelocidad, this.jugador);
     return true;
+  }
+
+  dispararEnemigo(x, y, angulo) {
+    const bala = this.balasEnemigas.getFirstDead(false);
+    if (!bala) return;
+    bala.danio = BALA_ENEMIGA.danio;
+    bala.disparar(x, y, angulo, this.time.now, BALA_ENEMIGA.velocidad, BALA_ENEMIGA.vidaMs);
   }
 
   explotar(x, y, color) {
@@ -280,12 +319,24 @@ export default class GameScene extends Phaser.Scene {
       this.eliminarEnemigo(enemigo);
       return;
     }
-    if (!jugador.recibirDanio(this.time.now)) return;
+    if (!this.herirJugador()) return;
     this.eliminarEnemigo(enemigo);
+  }
+
+  alRecibirDisparo(jugador, bala) {
+    if (this.terminado || !bala.active) return;
+    bala.desactivar();
+    if (jugador.tieneEscudo(this.reloj)) return;
+    this.herirJugador();
+  }
+
+  herirJugador() {
+    if (!this.jugador.recibirDanio(this.time.now)) return false;
     this.actualizarVidas();
     this.cameras.main.shake(EFECTOS.sacudidaMs, EFECTOS.sacudidaIntensidad);
     Sonido.danio();
-    if (jugador.vidas <= 0) this.terminarPartida();
+    if (this.jugador.vidas <= 0) this.terminarPartida();
+    return true;
   }
 
   eliminarEnemigo(enemigo) {
@@ -347,6 +398,7 @@ export default class GameScene extends Phaser.Scene {
   update(time, delta) {
     if (this.pausado || this.terminado || this.eligiendo) return;
     this.reloj += delta;
+    this.revisarModoTactil();
 
     const t = this.teclas;
     const tactil = this.controlesTactiles;
@@ -370,7 +422,8 @@ export default class GameScene extends Phaser.Scene {
       else if (dx !== 0 || dy !== 0) this.jugador.rotation = Math.atan2(dy, dx);
       disparando = disparando || tactil.disparando;
     } else {
-      this.jugador.apuntarA(puntero.x, puntero.y);
+      this.cameras.main.getWorldPoint(puntero.x, puntero.y, this.puntoMundo);
+      this.jugador.apuntarA(this.puntoMundo.x, this.puntoMundo.y);
     }
 
     if (disparando) this.disparar(time);

@@ -9,13 +9,16 @@ Shooter top-down de arena con oleadas infinitas, hecho con **Phaser 3** y **Vite
 | Mover    | WASD o flechas                | Joystick (mitad izquierda de la pantalla)          |
 | Apuntar  | Mouse                         | Automático al enemigo más cercano                  |
 | Disparar | Clic izquierdo (mantener) o Espacio | Mantener pulsada la mitad derecha            |
-| Pausa    | P o Esc                       | Botón **II** (arriba a la derecha)                 |
+| Pausa    | P o Esc                       | Botón **II** (arriba a la derecha, solo táctil)    |
 | Habilidad 1 | E                          | Botón **E** (sobre el botón de disparo)            |
 | Habilidad 2 | Q (desde la oleada 4)      | Botón **Q** (a la izquierda del disparo)           |
+| Habilidad 3 | R (desde la oleada 8)      | Botón **R** (arriba a la izquierda del disparo)    |
+
+En PC no se muestran botones en pantalla: los enfriamientos aparecen como texto bajo las vidas. El mapa mide 1600 × 1200 y la cámara sigue al jugador.
 
 ### Habilidades
 
-Empiezas con **Impulso** en la tecla E. Al terminar la oleada 3 se desbloquea la tecla Q y eliges tu segunda habilidad. Cada 2 oleadas (2, 4, 6…) puedes elegir uno de 3 poderes al azar para reemplazar uno de los tuyos, o mantener los que tienes.
+Empiezas con **Impulso** en la tecla E. Al terminar la oleada 3 se desbloquea la tecla Q y al terminar la 7 la tecla R; en cada caso eliges la habilidad para esa tecla. Cada 2 oleadas (2, 4, 6…) puedes elegir uno de 3 poderes al azar para reemplazar uno de los tuyos, o mantener los que tienes.
 
 | Poder          | Efecto                                              | Enfriamiento |
 |----------------|-----------------------------------------------------|--------------|
@@ -28,7 +31,7 @@ Empiezas con **Impulso** en la tecla E. Al terminar la oleada 3 se desbloquea la
 
 Los enfriamientos se detienen mientras el juego está en pausa o eligiendo poder. Todos los valores se ajustan en `HABILIDADES` dentro de `src/config.js`.
 
-- Tipos de enemigo: **normal** (rojo), **rápido** (naranja, poca vida) y **tanque** (morado, lento y resistente).
+- Tipos de enemigo: **normal** (rojo), **rápido** (naranja, poca vida), **tanque** (morado, lento y resistente) y **tirador** (verde, desde la oleada 3: se mantiene a distancia y te dispara; el Escudo bloquea sus balas).
 - Tienes 3 vidas y un breve tiempo de invulnerabilidad tras recibir daño.
 - El récord se guarda en el navegador (`localStorage`).
 - El sonido (generado con WebAudio) está desactivado por defecto; se activa desde el menú.

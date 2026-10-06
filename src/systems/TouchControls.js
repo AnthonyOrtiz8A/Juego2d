@@ -24,7 +24,7 @@ export default class TouchControls {
     this.perilla = scene.add.image(this.baseX, this.baseY, 'joy-perilla');
     this.boton = scene.add.image(TACTIL.botonX, TACTIL.botonY, 'boton-disparo');
     [this.base, this.perilla, this.boton].forEach((imagen) => {
-      imagen.setDepth(PROFUNDIDAD).setAlpha(TACTIL.opacidad).setVisible(false);
+      imagen.setDepth(PROFUNDIDAD).setAlpha(TACTIL.opacidad).setScrollFactor(0).setVisible(false);
     });
 
     scene.input.on('pointerdown', this.alPresionar, this);

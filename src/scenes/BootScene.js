@@ -15,6 +15,21 @@ export default class BootScene extends Phaser.Scene {
       for (let y = 0; y <= ALTO; y += 40) g.lineBetween(0, y + 0.5, ANCHO, y + 0.5);
     });
 
+    this.crearTextura('celda', 40, 40, (g) => {
+      g.fillStyle(COLORES.fondo, 1);
+      g.fillRect(0, 0, 40, 40);
+      g.lineStyle(1, COLORES.rejilla, 1);
+      g.lineBetween(0.5, 0, 0.5, 40);
+      g.lineBetween(0, 0.5, 40, 0.5);
+    });
+
+    this.crearTextura('bala-enemiga', 12, 12, (g) => {
+      g.fillStyle(0xff3b6b, 0.45);
+      g.fillCircle(6, 6, 6);
+      g.fillStyle(0xffffff, 1);
+      g.fillCircle(6, 6, 2.5);
+    });
+
     this.crearTextura('jugador', 36, 36, (g) => {
       g.fillStyle(COLORES.jugador, 1);
       g.lineStyle(2, COLORES.borde, 1);
@@ -92,7 +107,19 @@ export default class BootScene extends Phaser.Scene {
   }
 
   crearEnemigos() {
-    const { normal, rapido, tanque } = ENEMIGOS.tipos;
+    const { normal, rapido, tanque, tirador } = ENEMIGOS.tipos;
+
+    const lti = tirador.radio + 8;
+    this.crearTextura('enemigo-tirador', lti * 2, lti * 2, (g) => {
+      g.fillStyle(COLORES.borde, 0.9);
+      g.fillRect(lti, lti - 3, tirador.radio + 7, 6);
+      g.fillStyle(tirador.color, 1);
+      g.fillRect(lti - tirador.radio, lti - tirador.radio, tirador.radio * 2, tirador.radio * 2);
+      g.lineStyle(2, COLORES.borde, 0.9);
+      g.strokeRect(lti - tirador.radio, lti - tirador.radio, tirador.radio * 2, tirador.radio * 2);
+      g.fillStyle(0x000000, 0.5);
+      g.fillCircle(lti, lti, 4);
+    });
 
     const ln = normal.radio + 3;
     this.crearTextura('enemigo-normal', ln * 2, ln * 2, (g) => {

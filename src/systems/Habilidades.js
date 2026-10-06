@@ -76,12 +76,21 @@ const EJECUTAR = {
 export default class GestorHabilidades {
   constructor(scene) {
     this.scene = scene;
-    this.ranuras = { E: HABILIDADES.inicial, Q: null };
-    this.listaEn = { E: 0, Q: 0 };
+    this.ranuras = { E: HABILIDADES.inicial, Q: null, R: null };
+    this.listaEn = { E: 0, Q: 0, R: 0 };
   }
 
   desbloqueada(tecla) {
     return this.ranuras[tecla] !== null;
+  }
+
+  teclasActivas() {
+    return Object.keys(this.ranuras).filter((tecla) => this.desbloqueada(tecla));
+  }
+
+  teclaPorDesbloquear(oleadaCompletada) {
+    const desbloqueos = HABILIDADES.desbloqueos;
+    return Object.keys(desbloqueos).find((tecla) => desbloqueos[tecla] === oleadaCompletada + 1 && !this.desbloqueada(tecla)) || null;
   }
 
   restante(tecla, reloj) {
@@ -109,7 +118,7 @@ export default class GestorHabilidades {
   }
 
   opciones() {
-    const equipadas = Object.values(this.ranuras);
+    const equipadas = Object.values(this.ranuras).filter((id) => id !== null);
     const libres = Object.keys(HABILIDADES.tipos).filter((id) => !equipadas.includes(id));
     return Phaser.Utils.Array.Shuffle(libres).slice(0, HABILIDADES.opcionesPorEleccion);
   }

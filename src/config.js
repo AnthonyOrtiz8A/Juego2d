@@ -1,6 +1,12 @@
 export const ANCHO = 800;
 export const ALTO = 600;
 
+export const MUNDO = {
+  ancho: 1600,
+  alto: 1200,
+  suavizadoCamara: 0.12
+};
+
 export const COLORES = {
   fondo: 0x0b0e1a,
   rejilla: 0x161b2e,
@@ -25,6 +31,13 @@ export const BALA = {
   distanciaCanon: 20
 };
 
+export const BALA_ENEMIGA = {
+  velocidad: 280,
+  danio: 1,
+  vidaMs: 2600,
+  poolMax: 40
+};
+
 export const ENEMIGOS = {
   poolMax: 120,
   margenAparicion: 30,
@@ -33,7 +46,18 @@ export const ENEMIGOS = {
   tipos: {
     normal: { vida: 2, velocidad: 85, radio: 13, puntos: 10, color: 0xff4d6d },
     rapido: { vida: 1, velocidad: 155, radio: 9, puntos: 15, color: 0xffa62b },
-    tanque: { vida: 8, velocidad: 48, radio: 22, puntos: 40, color: 0xa66bff }
+    tanque: { vida: 8, velocidad: 48, radio: 22, puntos: 40, color: 0xa66bff },
+    tirador: {
+      vida: 3,
+      velocidad: 75,
+      radio: 12,
+      puntos: 25,
+      color: 0x5cff5c,
+      distancia: 260,
+      tolerancia: 40,
+      alcanceExtra: 120,
+      cadenciaMs: 1800
+    }
   }
 };
 
@@ -50,10 +74,13 @@ export const OLEADAS = {
   pausaEntreOleadasMs: 2200,
   oleadaRapidos: 2,
   oleadaTanques: 3,
+  oleadaTiradores: 3,
   probabilidadRapidoBase: 0.15,
   probabilidadRapidoMax: 0.4,
   probabilidadTanqueBase: 0.08,
   probabilidadTanqueMax: 0.22,
+  probabilidadTiradorBase: 0.1,
+  probabilidadTiradorMax: 0.2,
   incrementoProbabilidad: 0.03
 };
 
@@ -81,7 +108,7 @@ export const EFECTOS = {
 export const HABILIDADES = {
   inicial: 'dash',
   cadaOleadas: 2,
-  oleadaSegundaRanura: 4,
+  desbloqueos: { Q: 4, R: 8 },
   opcionesPorEleccion: 3,
   esperaSelectorMs: 700,
   tipos: {
