@@ -1,5 +1,7 @@
 import { OLEADAS } from '../config.js';
 
+const ESPERA_SIN_BAJAS_MS = 20000;
+
 export default class WaveManager {
   constructor(scene, opciones = {}) {
     this.scene = scene;
@@ -15,6 +17,21 @@ export default class WaveManager {
     this.esperando = false;
     this.jefeGenerado = false;
     this.terminado = false;
+    this.ultimaBaja = 0;
+  }
+
+  registrarBaja() {
+    this.ultimaBaja = this.scene.reloj;
+  }
+
+  vigilar() {
+    if (this.terminado || this.esperando || this.pendientes > 0) {
+      this.ultimaBaja = this.scene.reloj;
+      return;
+    }
+    if (this.scene.reloj - this.ultimaBaja < ESPERA_SIN_BAJAS_MS) return;
+    this.ultimaBaja = this.scene.reloj;
+    this.scene.reubicarEnemigos();
   }
 
   get numeroEnNivel() {

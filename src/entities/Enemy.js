@@ -83,19 +83,24 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     const velocidad = lento ? this.velocidad * congelacion.factorVelocidad : this.velocidad;
     const haciaJugador = Math.atan2(this.objetivo.y - this.y, this.objetivo.x - this.x);
 
-    if (this.datos.jefe) {
-      this.comportamientoJefe(haciaJugador, velocidad, lento);
-      return;
+    if (this.datos.jefe) this.comportamientoJefe(haciaJugador, velocidad, lento);
+    else if (this.datos.distancia) this.comportamientoTirador(haciaJugador, velocidad, lento);
+    else {
+      const angulo = haciaJugador + Math.sin(time * 0.003 + this.fase) * ENEMIGOS.zigzag;
+      this.body.velocity.set(Math.cos(angulo) * velocidad, Math.sin(angulo) * velocidad);
+      this.rotation = angulo;
     }
+    this.impedirSalida();
+  }
 
-    if (this.datos.distancia) {
-      this.comportamientoTirador(haciaJugador, velocidad, lento);
-      return;
-    }
-
-    const angulo = haciaJugador + Math.sin(time * 0.003 + this.fase) * ENEMIGOS.zigzag;
-    this.body.velocity.set(Math.cos(angulo) * velocidad, Math.sin(angulo) * velocidad);
-    this.rotation = angulo;
+  impedirSalida() {
+    const limites = this.scene.physics.world.bounds;
+    const radio = this.datos.radio;
+    const velocidad = this.body.velocity;
+    if (this.x < limites.x + radio && velocidad.x < 0) velocidad.x = 0;
+    if (this.x > limites.right - radio && velocidad.x > 0) velocidad.x = 0;
+    if (this.y < limites.y + radio && velocidad.y < 0) velocidad.y = 0;
+    if (this.y > limites.bottom - radio && velocidad.y > 0) velocidad.y = 0;
   }
 
   comportamientoJefe(haciaJugador, velocidad, lento) {
@@ -153,12 +158,20 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.finFase = reloj + datos.pausaMs * ritmo;
   }
 
+  puedeRetroceder(angulo) {
+    const limites = this.scene.physics.world.bounds;
+    const margen = this.datos.radio + 40;
+    const x = this.x + Math.cos(angulo) * margen;
+    const y = this.y + Math.sin(angulo) * margen;
+    return x > limites.x && x < limites.right && y > limites.y && y < limites.bottom;
+  }
+
   comportamientoTirador(haciaJugador, velocidad, lento) {
     const datos = this.datos;
     const distancia = Phaser.Math.Distance.Between(this.x, this.y, this.objetivo.x, this.objetivo.y);
     let movimiento = haciaJugador + this.sentido * (Math.PI / 2);
     if (distancia > datos.distancia + datos.tolerancia) movimiento = haciaJugador;
-    else if (distancia < datos.distancia - datos.tolerancia) movimiento = haciaJugador + Math.PI;
+    else if (distancia < datos.distancia - datos.tolerancia && this.puedeRetroceder(haciaJugador + Math.PI)) movimiento = haciaJugador + Math.PI;
     this.body.velocity.set(Math.cos(movimiento) * velocidad, Math.sin(movimiento) * velocidad);
     this.rotation = haciaJugador;
 

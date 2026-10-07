@@ -33,8 +33,8 @@ export default class Bullet extends Phaser.Physics.Arcade.Sprite {
   preUpdate(time, delta) {
     super.preUpdate(time, delta);
     if (!this.active) return;
-    const limites = this.scene.physics.world.bounds;
-    const fuera = this.x < limites.x - MARGEN || this.x > limites.right + MARGEN || this.y < limites.y - MARGEN || this.y > limites.bottom + MARGEN;
+    const mundo = this.scene.limitesMundo;
+    const fuera = this.x < -MARGEN || this.x > mundo.ancho + MARGEN || this.y < -MARGEN || this.y > mundo.alto + MARGEN;
     if (time <= this.expiraEn && !fuera) return;
     if (this.explosivo && this.scene.detonar) this.scene.detonar(this);
     else this.desactivar();

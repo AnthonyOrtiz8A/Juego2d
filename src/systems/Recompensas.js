@@ -15,8 +15,6 @@ export function estadisticasArma(armaId, mejoras) {
     velocidad: arma.velocidad,
     vidaMs: arma.vidaMs * (1 + nivel('alcance') * MEJORAS.alcance.valor),
     perforacion: arma.perforacion + nivel('calibre') * MEJORAS.calibre.valor,
-    cargador: arma.cargador,
-    recargaMs: arma.recargaMs,
     explosivo: arma.explosivo || 0
   };
 }
@@ -102,9 +100,9 @@ export function importarEstado(jugador, estado) {
     jugador.armas = [0, 1].map((i) => {
       const ranura = estado.armas[i];
       if (!ranura || !ARMAS[ranura.id]) return null;
-      return { id: ranura.id, balas: Math.min(ARMAS[ranura.id].cargador, Math.max(0, Number(ranura.balas) || 0)) };
+      return { id: ranura.id };
     });
-    if (!jugador.armas[0]) jugador.armas[0] = { id: 'pistola', balas: ARMAS.pistola.cargador };
+    if (!jugador.armas[0]) jugador.armas[0] = { id: 'pistola' };
     jugador.armaActual = estado.armaActual === 1 && jugador.armas[1] ? 1 : 0;
   }
   jugador.dedos = Math.max(0, Number(estado.dedos) || 0);

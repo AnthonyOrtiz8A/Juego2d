@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { JUGADOR, HABILIDADES, PASIVAS, MEJORAS, ARMAS, MUNICION } from '../config.js';
+import { JUGADOR, HABILIDADES, PASIVAS, MEJORAS, MUNICION } from '../config.js';
 import { estadisticasArma } from '../systems/Recompensas.js';
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
@@ -14,10 +14,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.nombre = opciones.nombre || '';
     this.local = opciones.local !== false;
     this.indice = opciones.indice || 0;
-    this.armas = [{ id: MUNICION.armaInicial, balas: ARMAS[MUNICION.armaInicial].cargador }, null];
+    this.armas = [{ id: MUNICION.armaInicial }, null];
     this.armaActual = 0;
-    this.recargaHasta = 0;
-    this.municionInfinita = Boolean(opciones.municionInfinita);
     this.dedos = 0;
     this.mejoras = {};
     this.pasivas = {};
@@ -82,8 +80,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   set arma(id) {
-    this.armas[this.armaActual] = { id, balas: ARMAS[id].cargador };
-    this.recargaHasta = 0;
+    this.armas[this.armaActual] = { id };
   }
 
   datosArma() {
@@ -94,59 +91,18 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     return this.armas[this.armaActual];
   }
 
-  recargando(reloj) {
-    return this.recargaHasta > 0 && reloj < this.recargaHasta;
-  }
-
-  iniciarRecarga(reloj) {
-    if (this.municionInfinita || this.recargaHasta > 0) return false;
-    const ranura = this.ranuraActual();
-    if (ranura.balas >= ARMAS[ranura.id].cargador) return false;
-    this.recargaHasta = reloj + ARMAS[ranura.id].recargaMs;
-    return true;
-  }
-
-  actualizarRecarga(reloj) {
-    if (this.recargaHasta === 0 || reloj < this.recargaHasta) return;
-    const ranura = this.ranuraActual();
-    ranura.balas = ARMAS[ranura.id].cargador;
-    this.recargaHasta = 0;
-  }
-
-  progresoRecarga(reloj) {
-    if (this.recargaHasta === 0) return 0;
-    return Math.max(0, this.recargaHasta - reloj) / ARMAS[this.arma].recargaMs;
-  }
-
-  tieneMunicion(reloj) {
-    if (this.municionInfinita) return true;
-    if (this.recargando(reloj)) return false;
-    if (this.ranuraActual().balas > 0) return true;
-    this.iniciarRecarga(reloj);
-    return false;
-  }
-
-  gastarBala(reloj) {
-    if (this.municionInfinita) return;
-    const ranura = this.ranuraActual();
-    ranura.balas = Math.max(0, ranura.balas - 1);
-    if (ranura.balas === 0) this.iniciarRecarga(reloj);
-  }
-
   cambiarArma() {
     const otra = 1 - this.armaActual;
     if (!this.armas[otra]) return false;
     this.armaActual = otra;
-    this.recargaHasta = 0;
     return true;
   }
 
   equiparArma(id) {
     const otra = 1 - this.armaActual;
     if (!this.armas[otra]) {
-      this.armas[otra] = { id, balas: ARMAS[id].cargador };
+      this.armas[otra] = { id };
       this.armaActual = otra;
-      this.recargaHasta = 0;
       return null;
     }
     const soltada = this.arma;

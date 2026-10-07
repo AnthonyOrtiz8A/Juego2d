@@ -116,8 +116,7 @@ export default class ClienteScene extends Phaser.Scene {
     this.acidoVista = [];
     this.balasPropias = [];
     this.enemigosVista = [];
-    this.datosYo = { arma: 'pistola', mejoras: {}, vm: JUGADOR.velocidad, armas: [{ id: 'pistola', balas: ARMAS.pistola.cargador }, null], aa: 0, rc: 0, dedos: 0 };
-    this.municionLocal = ARMAS.pistola.cargador;
+    this.datosYo = { arma: 'pistola', mejoras: {}, vm: JUGADOR.velocidad, armas: [{ id: 'pistola' }, null], aa: 0, dedos: 0 };
     this.prediccion = { x: MUNDO.ancho / 2, y: MUNDO.alto / 2, vx: 0, vy: 0, tp: -1, dashHasta: 0, dvx: 0, dvy: 0 };
     this.miIndice = Math.max(0, this.red.jugadores.findIndex((jugador) => jugador.id === this.red.miId));
 
@@ -140,7 +139,6 @@ export default class ClienteScene extends Phaser.Scene {
 
     this.teclas = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT,SPACE');
     TECLAS_HABILIDAD.forEach((tecla) => this.input.keyboard.on('keydown-' + tecla, () => this.usarHabilidad(tecla)));
-    this.input.keyboard.on('keydown-R', () => this.accion('recargar'));
     this.input.keyboard.on('keydown-X', () => this.accion('cambiar'));
     this.input.keyboard.on('keydown-F', () => this.accion('interactuar'));
     this.input.on('wheel', () => this.accion('cambiar'));
@@ -343,11 +341,8 @@ export default class ClienteScene extends Phaser.Scene {
     this.datosYo.vm = Number.isFinite(yo.vm) ? yo.vm : JUGADOR.velocidad;
     this.datosYo.dedos = yo.dedos || 0;
     this.datosYo.aa = yo.aa === 1 ? 1 : 0;
-    this.datosYo.rc = (yo.rc || 0) / 1000;
     if (Array.isArray(yo.armas)) {
-      this.datosYo.armas = yo.armas.map((ranura) => (ranura && IDS_ARMA[ranura[0]] ? { id: IDS_ARMA[ranura[0]], balas: ranura[1] } : null));
-      const actual = this.datosYo.armas[this.datosYo.aa];
-      this.municionLocal = actual ? actual.balas : 0;
+      this.datosYo.armas = yo.armas.map((indice) => (IDS_ARMA[indice] ? { id: IDS_ARMA[indice] } : null));
     }
     if (yo.tp !== this.prediccion.tp) {
       this.prediccion.tp = yo.tp;
@@ -441,7 +436,7 @@ export default class ClienteScene extends Phaser.Scene {
 
   actualizarHistoria(time) {
     if (!this.vista) return;
-    this.hudArmas.actualizar(this.datosYo.armas, this.datosYo.aa, this.datosYo.rc, this.datosYo.dedos);
+    this.hudArmas.actualizar(this.datosYo.armas, this.datosYo.aa, this.datosYo.dedos);
     const p = this.prediccion;
     const objetivo = this.vivo() ? this.vista.interactuable(p.x, p.y) : null;
     this.botonesAccion.fijarInteraccion(Boolean(objetivo));
@@ -517,8 +512,6 @@ export default class ClienteScene extends Phaser.Scene {
     const arma = estadisticasArma(this.datosYo.arma, this.datosYo.mejoras);
     const frenesi = this.yo.banderas & BANDERA_JUGADOR.frenesi ? HABILIDADES.tipos.frenesi.multiplicadorCadencia : 1;
     if (time < this.proximoDisparoLocal) return;
-    if (this.vista && (this.municionLocal <= 0 || this.datosYo.rc > 0)) return;
-    if (this.vista) this.municionLocal -= 1;
     this.proximoDisparoLocal = time + arma.cadenciaMs / frenesi;
     const p = this.prediccion;
     const x = p.x + Math.cos(this.angulo) * BALA.distanciaCanon;

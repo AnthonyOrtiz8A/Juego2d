@@ -4,7 +4,6 @@ import { crearTexto } from './Interfaz.js';
 const PROFUNDIDAD = 41;
 const BOTONES = {
   cambiar: { x: ANCHO - 40, y: ALTO - 215, texto: 'ARMA', ancho: 60 },
-  recargar: { x: ANCHO - 40, y: ALTO - 290, texto: 'R', ancho: 60 },
   interactuar: { x: ANCHO - 115, y: ALTO - 310, texto: 'F', ancho: 68 }
 };
 

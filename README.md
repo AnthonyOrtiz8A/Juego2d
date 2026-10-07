@@ -13,7 +13,6 @@ Shooter top-down de arena con oleadas infinitas, hecho con **Phaser 3** y **Vite
 | Habilidad 1 | E                          | Botón **E** (sobre el botón de disparo)            |
 | Habilidad 2 | Q (desde la oleada 4)      | Botón **Q** (a la izquierda del disparo)           |
 | Habilidad 3 | C (desde la oleada 8)      | Botón **C** (arriba a la izquierda del disparo)    |
-| Recargar (historia) | R (también es automática al vaciar el cargador) | Botón **R** |
 | Cambiar arma (historia) | X o rueda del mouse | Botón **ARMA** |
 | Usar / comprar (historia) | F | Botón **F** (aparece cerca de armas y tiendas) |
 
@@ -56,7 +55,7 @@ Cruza la ciudad infestada en 3 mundos y 10 niveles, solo o con hasta 3 amigos (e
   - **Tesoro:** cofres para todos (uno por jugador, más uno).
   - **Tienda:** un vendedor con artículos que se pagan con **dedos de zombie**.
   - **Salida:** un portal; todo el equipo debe pararse en él para avanzar. En los niveles con jefe, el portal aparece al derrotarlo.
-- **Armas:** llevas 2 y cambias cuando quieras. Cada una tiene cargador y tiempo de recarga. Hay 7: pistola, revólver, escopeta, subfusil, ametralladora, rifle (perforante) y lanzagranadas (daño en área). Las armas nuevas caen al suelo (de cofres o al cambiar) y se recogen con **F**; si tienes las dos ranuras llenas, sueltas la que tienes en la mano.
+- **Armas:** llevas 2 (con munición infinita) y cambias cuando quieras. Hay 7: pistola, revólver, escopeta, subfusil, ametralladora, rifle (perforante) y lanzagranadas (daño en área). Las armas nuevas caen al suelo (de cofres o al cambiar) y se recogen con **F**; si tienes las dos ranuras llenas, sueltas la que tienes en la mano.
 - **Dedos de zombie:** algunos zombies los sueltan al morir (los grandes y los jefes, más). Se recogen al pasar cerca y cada jugador tiene los suyos. En las tiendas compras armas, habilidades activas, pasivas y mejoras que aún no tienes.
 - **Cofres:** cada tipo tiene su diseño: azul con rayo (**habilidad activa**, eliges en E, Q o C), caja militar verde (**arma**, cae al suelo), madera con corazón (**pasiva**) y morado con flecha (**mejora** del arma).
 - **Jefes:** embisten tras un aviso; la Abominación además lanza ácido e invoca zombies, y se enfurece con poca vida.
