@@ -2,13 +2,21 @@ import Phaser from 'phaser';
 import { JUGADOR, HABILIDADES } from '../config.js';
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, x, y) {
+  constructor(scene, x, y, opciones = {}) {
     super(scene, x, y, 'jugador');
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.body.setCircle(JUGADOR.radio, this.width / 2 - JUGADOR.radio, this.height / 2 - JUGADOR.radio);
     this.setCollideWorldBounds(true);
     this.setDepth(10);
+    this.id = opciones.id || 'local';
+    this.nombre = opciones.nombre || '';
+    this.local = opciones.local !== false;
+    this.entrada = { dx: 0, dy: 0, angulo: 0, disparando: false, habilidades: [] };
+    this.habilidades = null;
+    this.etiqueta = null;
+    this.vivo = true;
+    this.desconectado = false;
     this.vidas = JUGADOR.vidas;
     this.invulnerableHasta = 0;
     this.proximoDisparo = 0;
@@ -63,15 +71,31 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   recibirDanio(tiempo) {
-    if (this.esInvulnerable(tiempo)) return false;
+    if (!this.vivo || this.esInvulnerable(tiempo)) return false;
     this.vidas -= 1;
     this.invulnerableHasta = tiempo + JUGADOR.invulnerabilidadMs;
     return true;
   }
 
+  caer() {
+    this.vivo = false;
+    this.disableBody(true, true);
+    if (this.etiqueta) this.etiqueta.setVisible(false);
+  }
+
+  revivir(x, y, vidas, tiempo) {
+    if (this.desconectado) return;
+    this.vivo = true;
+    this.vidas = vidas;
+    this.invulnerableHasta = tiempo + JUGADOR.invulnerabilidadMs;
+    this.enableBody(true, x, y, true, true);
+    if (this.etiqueta) this.etiqueta.setVisible(true);
+  }
+
   preUpdate(time, delta) {
     super.preUpdate(time, delta);
     this.alpha = this.esInvulnerable(time) && Math.floor(time / 80) % 2 === 0 ? 0.3 : 1;
+    if (this.etiqueta && this.vivo) this.etiqueta.setPosition(this.x, this.y - 30);
   }
 
   apuntarA(x, y) {
