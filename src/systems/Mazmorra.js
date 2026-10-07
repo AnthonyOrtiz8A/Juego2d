@@ -1,9 +1,39 @@
 import Phaser from 'phaser';
 import { MAZMORRA, TIENDA } from '../config.js';
-import { dibujarTileset, DECORACIONES } from './Dibujos.js';
+import { dibujarTileset, TAMANO_DECORACION } from './Dibujos.js';
 
-export const TILE = { vacio: 0, suelo: 1, sueloSangre: 2, sueloGrieta: 3, pared: 4, puerta: 5, pasillo: 6 };
-export const SOLIDOS = [TILE.vacio, TILE.pared, TILE.puerta];
+export const TILE = {
+  exterior: 0,
+  suelo: 1,
+  sueloSangre: 2,
+  sueloGrieta: 3,
+  pared: 4,
+  puerta: 5,
+  pasilloH: 6,
+  pasilloV: 7,
+  acera: 8,
+  exteriorB: 9,
+  exteriorC: 10,
+  sueloDetalle: 11,
+  cebraH: 12,
+  cebraV: 13
+};
+export const CANTIDAD_TILES = 14;
+export const SOLIDOS = [TILE.exterior, TILE.exteriorB, TILE.exteriorC, TILE.pared, TILE.puerta];
+
+export const ESCENARIOS = {
+  suburbio: { sala: ['auto', 'arbol', 'arbusto', 'bolsas', 'sangre', 'escombros', 'cono'], exterior: ['arbol', 'arbol', 'arbusto', 'aire'], quemados: 0.25 },
+  avenida: { sala: ['auto', 'auto', 'autoQuemado', 'barricada', 'bolsas', 'farola', 'sangre', 'escombros', 'cono'], exterior: ['aire', 'tragaluz', 'aire'], quemados: 0.45 },
+  plaza: { sala: ['banca', 'arbol', 'farola', 'autoQuemado', 'sangre', 'escombros', 'bolsas'], exterior: ['aire', 'tragaluz', 'arbol'], quemados: 0.5 },
+  centro: { sala: ['auto', 'auto', 'autoQuemado', 'barricada', 'farola', 'sangre', 'escombros', 'cono', 'bolsas'], exterior: ['aire', 'tragaluz', 'helipuerto'], quemados: 0.55 },
+  hospital: { sala: ['cama', 'camilla', 'portasuero', 'sillaRuedas', 'carrito', 'sangre', 'cama', 'escombros'], exterior: ['aire', 'helipuerto', 'tragaluz'], quemados: 0.15 },
+  industrial: { sala: ['caja', 'barril', 'contenedor', 'sangre', 'escombros', 'barril'], exterior: ['aire', 'tragaluz'], quemados: 0.35 },
+  puerto: { sala: ['contenedor', 'caja', 'barril', 'sangre', 'contenedor'], exterior: [], quemados: 0.3 },
+  autopista: { sala: ['auto', 'autoQuemado', 'barreraJersey', 'cono', 'escombros', 'sangre', 'auto'], exterior: ['arbusto', 'arbol'], quemados: 0.6 },
+  militar: { sala: ['sacos', 'tienda', 'cajaMunicion', 'jeep', 'sangre', 'sacos'], exterior: ['arbol', 'arbol', 'arbusto'], quemados: 0.35 },
+  puente: { sala: ['auto', 'autoQuemado', 'barreraJersey', 'escombros', 'sangre', 'autoQuemado'], exterior: [], quemados: 0.7 }
+};
+
 const DIRECCIONES = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 function clave(c, f) {
@@ -30,12 +60,116 @@ function caminoAleatorio(rng, largo) {
   return null;
 }
 
+function tallarSala(datos, sala, rng) {
+  for (let y = sala.y; y < sala.y + sala.h; y++) {
+    for (let x = sala.x; x < sala.x + sala.w; x++) {
+      const borde = x === sala.x || y === sala.y || x === sala.x + sala.w - 1 || y === sala.y + sala.h - 1;
+      const anillo = x === sala.x + 1 || y === sala.y + 1 || x === sala.x + sala.w - 2 || y === sala.y + sala.h - 2;
+      if (borde) datos[y][x] = TILE.pared;
+      else if (anillo) datos[y][x] = TILE.acera;
+      else {
+        const azar = rng.frac();
+        datos[y][x] = azar < 0.025 ? TILE.sueloSangre : azar < 0.06 ? TILE.sueloGrieta : azar < 0.068 ? TILE.sueloDetalle : TILE.suelo;
+      }
+    }
+  }
+}
+
+function tallarPasillo(datos, a, b) {
+  const { celda } = MAZMORRA;
+  const mitad = Math.floor(MAZMORRA.anchoPasillo / 2);
+  const horizontal = a.f === b.f;
+  const centro = horizontal ? a.f * celda + Math.floor(celda / 2) : a.c * celda + Math.floor(celda / 2);
+  const desde = horizontal ? a.x + a.w - 1 : a.y + a.h - 1;
+  const hasta = horizontal ? b.x : b.y;
+  const piso = horizontal ? TILE.pasilloH : TILE.pasilloV;
+  const cebra = horizontal ? TILE.cebraV : TILE.cebraH;
+  const fijar = (largo, ancho, valor) => {
+    const x = horizontal ? largo : ancho;
+    const y = horizontal ? ancho : largo;
+    datos[y][x] = valor;
+  };
+  const leer = (largo, ancho) => (horizontal ? datos[ancho][largo] : datos[largo][ancho]);
+  for (let largo = desde; largo <= hasta; largo++) {
+    for (let d = -mitad - 1; d <= mitad + 1; d++) {
+      const ancho = centro + d;
+      if (Math.abs(d) === mitad + 1) {
+        if (SOLIDOS.includes(leer(largo, ancho)) && leer(largo, ancho) !== TILE.pared) fijar(largo, ancho, TILE.pared);
+      } else {
+        fijar(largo, ancho, largo === desde || largo === hasta ? cebra : piso);
+      }
+    }
+  }
+  for (let d = -mitad; d <= mitad; d++) {
+    const puertaA = horizontal ? { x: desde, y: centro + d } : { x: centro + d, y: desde };
+    const puertaB = horizontal ? { x: hasta, y: centro + d } : { x: centro + d, y: hasta };
+    a.puertas.push({ ...puertaA, abierta: cebra });
+    b.puertas.push({ ...puertaB, abierta: cebra });
+  }
+}
+
+function decorar(mazmorra, rng, tema) {
+  const escenario = ESCENARIOS[tema] || ESCENARIOS.avenida;
+  const t = MAZMORRA.tile;
+  const { datos, salas } = mazmorra;
+  salas.forEach((sala) => {
+    sala.decoraciones = [];
+    sala.fuegos = [];
+    if (sala.tipo === 'tienda' || sala.tipo === 'jefe' || sala.tipo === 'inicio') return;
+    const cantidad = Math.round((sala.w - 4) * (sala.h - 4) * MAZMORRA.decoracionPorTile);
+    for (let i = 0; i < cantidad; i++) {
+      let tipo = rng.pick(escenario.sala);
+      if (tipo === 'auto' && rng.frac() < escenario.quemados) tipo = 'autoQuemado';
+      const x = (sala.x + rng.between(3, sala.w - 4)) * t + t / 2;
+      const y = (sala.y + rng.between(3, sala.h - 4)) * t + t / 2;
+      sala.decoraciones.push({ tipo, x, y, angulo: rng.between(0, 3) * 90 + rng.between(-12, 12) });
+      if (tipo === 'autoQuemado' && sala.fuegos.length < MAZMORRA.fuegosPorSala) sala.fuegos.push({ x, y, escala: rng.realInRange(0.8, 1.2) });
+    }
+  });
+
+  mazmorra.exteriores = [];
+  mazmorra.fuegosExteriores = [];
+  const cercaDeJuego = (x, y) => {
+    for (let dy = -4; dy <= 4; dy += 2) {
+      for (let dx = -4; dx <= 4; dx += 2) {
+        const fila = datos[y + dy];
+        if (fila && fila[x + dx] !== undefined && !SOLIDOS.includes(fila[x + dx])) return true;
+      }
+    }
+    return false;
+  };
+  const exteriores = [];
+  for (let y = 1; y < mazmorra.alto - 1; y++) {
+    for (let x = 1; x < mazmorra.ancho - 1; x++) {
+      if ([TILE.exterior, TILE.exteriorB, TILE.exteriorC].includes(datos[y][x]) && cercaDeJuego(x, y)) exteriores.push({ x, y });
+    }
+  }
+  const cantidadExterior = Math.round(exteriores.length * MAZMORRA.decoracionExterior);
+  for (let i = 0; i < cantidadExterior && escenario.exterior.length > 0; i++) {
+    const celda = rng.pick(exteriores);
+    mazmorra.exteriores.push({ tipo: rng.pick(escenario.exterior), x: celda.x * t + t / 2, y: celda.y * t + t / 2, angulo: rng.between(0, 3) * 90 });
+  }
+  if (escenario.quemados > 0.2) {
+    for (let i = 0; i < MAZMORRA.fuegosExterior && exteriores.length > 0; i++) {
+      const celda = rng.pick(exteriores);
+      mazmorra.fuegosExteriores.push({ x: celda.x * t + t / 2, y: celda.y * t + t / 2, escala: rng.realInRange(1, 1.8) });
+    }
+  }
+}
+
 export function generarMazmorra(semilla, nivel) {
   const rng = new Phaser.Math.RandomDataGenerator(['mazmorra-' + semilla]);
   const { columnas, filas, celda } = MAZMORRA;
   const ancho = columnas * celda;
   const alto = filas * celda;
-  const datos = Array.from({ length: alto }, () => new Array(ancho).fill(TILE.vacio));
+  const datos = Array.from({ length: alto }, () => new Array(ancho).fill(TILE.exterior));
+  for (let y = 0; y < alto; y++) {
+    for (let x = 0; x < ancho; x++) {
+      const azar = rng.frac();
+      if (azar < 0.12) datos[y][x] = TILE.exteriorC;
+      else if (azar < 0.4) datos[y][x] = TILE.exteriorB;
+    }
+  }
 
   const combates = MAZMORRA.combatesBase + nivel.mundo - 1;
   const camino = caminoAleatorio(rng, combates + 2);
@@ -68,89 +202,27 @@ export function generarMazmorra(semilla, nivel) {
 
   salas.forEach((sala) => {
     const grande = sala.tipo === 'jefe';
-    const w = grande ? MAZMORRA.salaMax.ancho : rng.between(MAZMORRA.salaMin.ancho, MAZMORRA.salaMax.ancho);
-    const h = grande ? MAZMORRA.salaMax.alto : rng.between(MAZMORRA.salaMin.alto, MAZMORRA.salaMax.alto);
-    sala.x = sala.c * celda + Math.floor((celda - w) / 2);
-    sala.y = sala.f * celda + Math.floor((celda - h) / 2);
-    sala.w = w;
-    sala.h = h;
+    sala.w = grande ? MAZMORRA.salaMax.ancho : rng.between(MAZMORRA.salaMin.ancho, MAZMORRA.salaMax.ancho);
+    sala.h = grande ? MAZMORRA.salaMax.alto : rng.between(MAZMORRA.salaMin.alto, MAZMORRA.salaMax.alto);
+    sala.x = sala.c * celda + Math.floor((celda - sala.w) / 2);
+    sala.y = sala.f * celda + Math.floor((celda - sala.h) / 2);
     sala.puertas = [];
     sala.conexiones = [];
-    for (let y = sala.y; y < sala.y + h; y++) {
-      for (let x = sala.x; x < sala.x + w; x++) {
-        const borde = x === sala.x || y === sala.y || x === sala.x + w - 1 || y === sala.y + h - 1;
-        if (borde) datos[y][x] = TILE.pared;
-        else {
-          const azar = rng.frac();
-          datos[y][x] = azar < 0.06 ? TILE.sueloSangre : azar < 0.12 ? TILE.sueloGrieta : TILE.suelo;
-        }
-      }
-    }
+    tallarSala(datos, sala, rng);
   });
 
-  const mitadPasillo = Math.floor(MAZMORRA.anchoPasillo / 2);
   salas.forEach((sala) => {
     if (sala.padre < 0) return;
     const padre = salas[sala.padre];
     sala.conexiones.push(padre.id);
     padre.conexiones.push(sala.id);
     const [a, b] = padre.c < sala.c || padre.f < sala.f ? [padre, sala] : [sala, padre];
-    if (a.f === b.f) {
-      const yc = a.f * celda + Math.floor(celda / 2);
-      const desde = a.x + a.w - 1;
-      const hasta = b.x;
-      for (let x = desde; x <= hasta; x++) {
-        for (let d = -mitadPasillo - 1; d <= mitadPasillo + 1; d++) {
-          const y = yc + d;
-          const lateral = Math.abs(d) === mitadPasillo + 1;
-          if (lateral) {
-            if (datos[y][x] === TILE.vacio) datos[y][x] = TILE.pared;
-          } else {
-            datos[y][x] = TILE.pasillo;
-          }
-        }
-      }
-      for (let d = -mitadPasillo; d <= mitadPasillo; d++) {
-        a.puertas.push({ x: desde, y: yc + d });
-        b.puertas.push({ x: hasta, y: yc + d });
-      }
-    } else {
-      const xc = a.c * celda + Math.floor(celda / 2);
-      const desde = a.y + a.h - 1;
-      const hasta = b.y;
-      for (let y = desde; y <= hasta; y++) {
-        for (let d = -mitadPasillo - 1; d <= mitadPasillo + 1; d++) {
-          const x = xc + d;
-          const lateral = Math.abs(d) === mitadPasillo + 1;
-          if (lateral) {
-            if (datos[y][x] === TILE.vacio) datos[y][x] = TILE.pared;
-          } else {
-            datos[y][x] = TILE.pasillo;
-          }
-        }
-      }
-      for (let d = -mitadPasillo; d <= mitadPasillo; d++) {
-        a.puertas.push({ x: xc + d, y: desde });
-        b.puertas.push({ x: xc + d, y: hasta });
-      }
-    }
+    tallarPasillo(datos, a, b);
   });
 
-  const t = MAZMORRA.tile;
-  salas.forEach((sala) => {
-    sala.decoraciones = [];
-    if (sala.tipo === 'tienda' || sala.tipo === 'jefe') return;
-    for (let i = 0; i < MAZMORRA.decoracionPorSala; i++) {
-      sala.decoraciones.push({
-        tipo: rng.pick(DECORACIONES),
-        x: (sala.x + rng.between(2, sala.w - 3)) * t + t / 2,
-        y: (sala.y + rng.between(2, sala.h - 3)) * t + t / 2,
-        angulo: rng.pick([0, 90, 180, 270])
-      });
-    }
-  });
-
-  return { ancho, alto, datos, salas, inicio: 0 };
+  const mazmorra = { ancho, alto, datos, salas, inicio: 0 };
+  decorar(mazmorra, rng, nivel.tema);
+  return mazmorra;
 }
 
 export function rectanguloSala(sala, margenTiles = 1) {
@@ -168,13 +240,43 @@ export function centroSala(sala) {
   return { x: (sala.x + sala.w / 2) * t, y: (sala.y + sala.h / 2) * t };
 }
 
+function crearFuego(scene, fuego) {
+  const brillo = scene.add.image(fuego.x, fuego.y, 'brillo').setDepth(2).setBlendMode(Phaser.BlendModes.ADD).setScale(fuego.escala * 1.4).setAlpha(0.55);
+  const llama = scene.add.image(fuego.x, fuego.y - 6, 'fuego').setDepth(7).setScale(fuego.escala);
+  const duracion = 180 + Math.floor((fuego.x * 7 + fuego.y * 3) % 160);
+  scene.tweens.add({ targets: llama, scaleX: fuego.escala * 0.85, scaleY: fuego.escala * 1.15, alpha: 0.8, duration: duracion, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+  scene.tweens.add({ targets: brillo, alpha: 0.35, duration: duracion * 1.7, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+}
+
+function crearDecoracion(scene, deco, profundidad) {
+  const tamano = TAMANO_DECORACION[deco.tipo];
+  if (!tamano) return;
+  scene.add.image(deco.x, deco.y, 'deco-' + deco.tipo).setAngle(deco.angulo).setDepth(profundidad);
+}
+
+function crearAmbiente(scene) {
+  const clave = 'vineta';
+  const { width, height } = scene.scale;
+  if (!scene.textures.exists(clave)) {
+    const lienzo = scene.textures.createCanvas(clave, width, height);
+    const ctx = lienzo.getContext();
+    const gradiente = ctx.createRadialGradient(width / 2, height / 2, height * 0.35, width / 2, height / 2, Math.max(width, height) * 0.75);
+    gradiente.addColorStop(0, 'rgba(0,0,0,0)');
+    gradiente.addColorStop(1, 'rgba(10,4,0,0.75)');
+    ctx.fillStyle = gradiente;
+    ctx.fillRect(0, 0, width, height);
+    lienzo.refresh();
+  }
+  scene.add.image(0, 0, clave).setOrigin(0).setScrollFactor(0).setDepth(25);
+}
+
 export function crearMapaMazmorra(scene, mazmorra, tema) {
   const claveTiles = 'tiles-' + tema;
   const t = MAZMORRA.tile;
   if (!scene.textures.exists(claveTiles)) {
     const g = scene.make.graphics({ x: 0, y: 0 }, false);
     dibujarTileset(g, tema);
-    g.generateTexture(claveTiles, t * 7, t);
+    g.generateTexture(claveTiles, t * CANTIDAD_TILES, t);
     g.destroy();
   }
   const mapa = scene.make.tilemap({ data: mazmorra.datos.map((fila) => fila.slice()), tileWidth: t, tileHeight: t });
@@ -183,17 +285,18 @@ export function crearMapaMazmorra(scene, mazmorra, tema) {
   capa.setCollision(SOLIDOS);
   capa.setDepth(0);
 
+  mazmorra.exteriores.forEach((deco) => crearDecoracion(scene, deco, 1));
   mazmorra.salas.forEach((sala) => {
-    sala.decoraciones.forEach((deco) => {
-      scene.add.image(deco.x, deco.y, 'deco-' + deco.tipo).setAngle(deco.angulo).setDepth(1);
-    });
+    sala.decoraciones.forEach((deco) => crearDecoracion(scene, deco, 1));
+    sala.fuegos.forEach((fuego) => crearFuego(scene, fuego));
   });
+  mazmorra.fuegosExteriores.forEach((fuego) => crearFuego(scene, fuego));
+  crearAmbiente(scene);
   return { mapa, capa };
 }
 
 export function fijarPuertas(capa, sala, cerradas) {
-  const indice = cerradas ? TILE.puerta : TILE.pasillo;
-  sala.puertas.forEach((puerta) => capa.putTileAt(indice, puerta.x, puerta.y));
+  sala.puertas.forEach((puerta) => capa.putTileAt(cerradas ? TILE.puerta : puerta.abierta, puerta.x, puerta.y));
 }
 
 export function salaEn(mazmorra, x, y) {

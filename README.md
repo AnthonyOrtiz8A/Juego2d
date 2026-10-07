@@ -50,7 +50,8 @@ Cruza la ciudad infestada en 3 mundos y 10 niveles, solo o con hasta 3 amigos (e
 | 2 · El centro | Distrito financiero → Hospital general → Zona industrial (**minijefe: El Bruto**) |
 | 3 · La salida | Puerto → Autopista → Base militar → Puente de escape (**jefe final: La Abominación**) |
 
-- **Mazmorras generadas al azar en cada partida**, al estilo Soul Knight: cada nivel es un conjunto de salas unidas por pasillos, con la ambientación de su zona y un minimapa arriba a la derecha.
+- **Mazmorras generadas al azar en cada partida**, al estilo Soul Knight: cada nivel es un conjunto de salas amplias unidas por calles, con un minimapa arriba a la derecha.
+- **Se siente como cruzar la ciudad:** fuera de las salas no hay vacío, sino el escenario de cada zona (techos de edificios en llamas, casas y jardines, rascacielos, el techo del hospital con helipuerto, agua del puerto, bosque de la base militar). Las salas parecen calles y plazas con aceras y pasos de cebra, decoradas según la zona: autos chocados y quemados con fuego animado, barricadas y farolas en la ciudad; camas, camillas, sueros y sillas de ruedas en el hospital; contenedores y barriles en el puerto y la zona industrial; sacos, tiendas y jeeps en la base militar.
   - **Combate:** al entrar se cierran las puertas hasta acabar con las oleadas.
   - **Tesoro:** cofres para todos (uno por jugador, más uno).
   - **Tienda:** un vendedor con artículos que se pagan con **dedos de zombie**.

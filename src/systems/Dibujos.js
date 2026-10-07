@@ -792,10 +792,6 @@ export function dibujarCofre(g, tipo, abierto) {
 
 export const TAMANO_TILE = 32;
 
-export function temaCompleto(temaId) {
-  return { ...BASE_TEMA, ...(TEMAS[temaId] || {}) };
-}
-
 function oscurecer(color, factor) {
   const r = Math.round(((color >> 16) & 255) * factor);
   const v = Math.round(((color >> 8) & 255) * factor);
@@ -803,53 +799,189 @@ function oscurecer(color, factor) {
   return (r << 16) | (v << 8) | a;
 }
 
-export function dibujarTileset(g, temaId) {
-  const t = temaCompleto(temaId);
-  const s = TAMANO_TILE;
-  const rng = new Phaser.Math.RandomDataGenerator(['tiles-' + temaId]);
+const ESTILOS_TILES = {
+  suburbio: { piso: 0x2c2d31, estiloPiso: 'asfalto', acera: 0x7d7a70, linea: 0xd9c56b, pared: 0x7a5a36, estiloPared: 'valla', exterior: [0x2f4423, 0x36502a, 0x7a3428], estiloExterior: 'jardin' },
+  avenida: { piso: 0x2a2b2f, estiloPiso: 'asfalto', acera: 0x6a6b70, linea: 0xd9c56b, pared: 0x3a3d44, estiloPared: 'edificio', exterior: [0x1f2126, 0x25282e, 0x2b2e35], estiloExterior: 'techo' },
+  plaza: { piso: 0x5f594f, estiloPiso: 'adoquin', acera: 0x77726a, linea: 0xd8d8d8, pared: 0x4a4740, estiloPared: 'muro', exterior: [0x23252a, 0x2a2c32, 0x30333a], estiloExterior: 'techo' },
+  centro: { piso: 0x26272b, estiloPiso: 'asfalto', acera: 0x5d5f66, linea: 0xd9c56b, pared: 0x2c2f36, estiloPared: 'edificio', exterior: [0x15171b, 0x1a1c21, 0x202329], estiloExterior: 'rascacielos' },
+  hospital: { piso: 0xbfc8ce, estiloPiso: 'baldosa', acera: 0x6fa8a0, linea: 0x3ea8ff, pared: 0xdfe4e8, estiloPared: 'muroBlanco', exterior: [0x5c6267, 0x656b71, 0x6e757b], estiloExterior: 'techo' },
+  industrial: { piso: 0x58533f, estiloPiso: 'concreto', acera: 0x58533f, linea: 0xe0b52a, pared: 0x4a4f57, estiloPared: 'lamina', exterior: [0x3b4048, 0x434951, 0x353940], estiloExterior: 'lamina', aceraPeligro: true },
+  puerto: { piso: 0x4c4f53, estiloPiso: 'concreto', acera: 0x4c4f53, linea: 0xe0b52a, pared: 0x6b6b66, estiloPared: 'barandal', exterior: [0x10283a, 0x13304a, 0x0e2233], estiloExterior: 'agua', aceraPeligro: true },
+  autopista: { piso: 0x252629, estiloPiso: 'asfalto', acera: 0x8c8c88, linea: 0xe8e8e8, pared: 0x6e6f72, estiloPared: 'muro', exterior: [0x2f3824, 0x37412b, 0x2a3320], estiloExterior: 'pasto' },
+  militar: { piso: 0x5a4f38, estiloPiso: 'tierra', acera: 0x6e6a52, linea: 0xc9a227, pared: 0x8a7a52, estiloPared: 'sacos', exterior: [0x1f2e18, 0x26381d, 0x2f4423], estiloExterior: 'bosque' },
+  puente: { piso: 0x2a2b2e, estiloPiso: 'asfalto', acera: 0x8c8c88, linea: 0xe8e8e8, pared: 0x6b6b66, estiloPared: 'barandal', exterior: [0x10283a, 0x13304a, 0x0e2233], estiloExterior: 'agua' }
+};
 
-  g.fillStyle(oscurecer(t.techo, 0.2), 1);
-  g.fillRect(0, 0, s, s);
-  g.fillStyle(oscurecer(t.techo, 0.3), 1);
-  g.fillRect(4, 4, 6, 6);
-  g.fillRect(20, 18, 5, 5);
+function aclarar(color, cantidad) {
+  const r = Math.min(255, ((color >> 16) & 255) + cantidad);
+  const v = Math.min(255, ((color >> 8) & 255) + cantidad);
+  const a = Math.min(255, (color & 255) + cantidad);
+  return (r << 16) | (v << 8) | a;
+}
 
-  for (let i = 1; i <= 3; i++) {
-    const x = i * s;
-    g.fillStyle(t.suelo, 1);
-    g.fillRect(x, 0, s, s);
-    g.lineStyle(1, t.juntas, 1);
+function pisoBase(g, rng, e, x, s) {
+  g.fillStyle(e.piso, 1);
+  g.fillRect(x, 0, s, s);
+  if (e.estiloPiso === 'baldosa') {
+    g.lineStyle(1, oscurecer(e.piso, 0.85), 1);
+    g.strokeRect(x + 0.5, 0.5, 15, 15);
+    g.strokeRect(x + 16.5, 16.5, 15, 15);
+    g.strokeRect(x + 16.5, 0.5, 15, 15);
+    g.strokeRect(x + 0.5, 16.5, 15, 15);
+  } else if (e.estiloPiso === 'adoquin') {
+    g.lineStyle(1, oscurecer(e.piso, 0.75), 1);
+    for (let fila = 0; fila < 4; fila++) {
+      const y = fila * 8;
+      g.lineBetween(x, y + 0.5, x + s, y + 0.5);
+      const desplazamiento = fila % 2 === 0 ? 0 : 8;
+      for (let col = desplazamiento; col < s; col += 16) g.lineBetween(x + col + 0.5, y, x + col + 0.5, y + 8);
+    }
+  } else if (e.estiloPiso === 'concreto') {
+    g.lineStyle(1, oscurecer(e.piso, 0.8), 1);
     g.strokeRect(x + 0.5, 0.5, s - 1, s - 1);
-    g.lineBetween(x + s / 2, 0, x + s / 2, s);
-    if (i === 2) {
-      g.fillStyle(0x4f0909, 0.75);
-      g.fillCircle(x + 12, 14, 6);
-      g.fillCircle(x + 19, 19, 3);
-    }
-    if (i === 3) {
-      g.lineStyle(1.5, 0x141416, 0.9);
-      g.lineBetween(x + 4, 6, x + 14, 15);
-      g.lineBetween(x + 14, 15, x + 11, 26);
-      g.lineBetween(x + 14, 15, x + 26, 18);
-    }
-    for (let j = 0; j < 4; j++) {
-      g.fillStyle(t.juntas, 0.8);
-      g.fillRect(x + rng.between(2, s - 4), rng.between(2, s - 4), 2, 2);
+  } else if (e.estiloPiso === 'tierra') {
+    for (let i = 0; i < 6; i++) {
+      g.fillStyle(rng.frac() < 0.5 ? oscurecer(e.piso, 0.75) : aclarar(e.piso, 20), 1);
+      g.fillCircle(x + rng.between(3, s - 3), rng.between(3, s - 3), rng.between(1, 2));
     }
   }
+  for (let i = 0; i < 5; i++) {
+    g.fillStyle(rng.frac() < 0.5 ? oscurecer(e.piso, 0.85) : aclarar(e.piso, 10), 0.8);
+    g.fillRect(x + rng.between(1, s - 3), rng.between(1, s - 3), 2, 2);
+  }
+}
 
-  const xp = 4 * s;
-  g.fillStyle(t.techo, 1);
-  g.fillRect(xp, 0, s, s);
-  g.fillStyle(t.techoDetalle, 1);
-  g.fillRect(xp, 0, s, 6);
-  g.lineStyle(1, oscurecer(t.techo, 0.6), 1);
-  g.strokeRect(xp + 0.5, 0.5, s - 1, s - 1);
-  g.lineBetween(xp, 16, xp + s, 16);
-  g.lineBetween(xp + 8, 6, xp + 8, 16);
-  g.lineBetween(xp + 24, 16, xp + 24, s);
+function dibujarExteriorTile(g, rng, e, x, s, variante) {
+  const estilo = e.estiloExterior;
+  const color = estilo === 'jardin' && variante === 2 ? e.exterior[2] : e.exterior[0];
+  g.fillStyle(color, 1);
+  g.fillRect(x, 0, s, s);
+  for (let i = 0; i < 4; i++) {
+    g.fillStyle(rng.frac() < 0.5 ? oscurecer(color, 0.9) : aclarar(color, 6), 1);
+    g.fillRect(x + rng.between(0, s - 6), rng.between(0, s - 6), rng.between(3, 6), rng.between(3, 6));
+  }
+  if (estilo === 'techo') {
+    if (variante === 1) {
+      g.fillStyle(aclarar(color, 25), 1);
+      g.fillRect(x + 8, 8, 14, 12);
+      g.lineStyle(1, oscurecer(color, 0.6), 1);
+      g.lineBetween(x + 10, 14, x + 20, 14);
+    }
+    if (variante === 2) {
+      g.fillStyle(0x0d0d0e, 0.6);
+      g.fillCircle(x + 16, 16, 11);
+    }
+  } else if (estilo === 'rascacielos') {
+    g.fillStyle(0xd9c56b, variante === 2 ? 0.35 : 0.12);
+    for (let i = 4; i < s; i += 8) for (let j = 4; j < s; j += 8) if (rng.frac() < 0.45) g.fillRect(x + i, j, 3, 3);
+  } else if (estilo === 'jardin') {
+    if (variante === 2) {
+      g.lineStyle(1, oscurecer(color, 0.7), 1);
+      for (let y = 4; y < s; y += 6) g.lineBetween(x, y, x + s, y);
+    } else {
+      g.fillStyle(oscurecer(color, 0.8), 1);
+      for (let i = 0; i < 6; i++) g.fillRect(x + rng.between(1, s - 3), rng.between(1, s - 3), 2, 3);
+    }
+  } else if (estilo === 'lamina') {
+    g.lineStyle(2, oscurecer(color, 0.75), 1);
+    for (let i = 3; i < s; i += 6) g.lineBetween(x + i, 0, x + i, s);
+    if (variante === 2) {
+      g.fillStyle(0x6b3a1a, 0.5);
+      g.fillCircle(x + 20, 12, 6);
+    }
+  } else if (estilo === 'agua') {
+    g.lineStyle(2, aclarar(color, 30), 0.6);
+    const y = 8 + variante * 7;
+    g.lineBetween(x + 4, y, x + 14, y);
+    g.lineBetween(x + 18, y + 10, x + 28, y + 10);
+  } else if (estilo === 'pasto' || estilo === 'bosque') {
+    g.fillStyle(oscurecer(color, 0.7), 1);
+    for (let i = 0; i < 8; i++) g.fillRect(x + rng.between(1, s - 2), rng.between(1, s - 3), 1, 3);
+    if (estilo === 'bosque' && variante > 0) {
+      g.fillStyle(aclarar(color, 12), 1);
+      g.fillCircle(x + 16, 16, 12);
+      g.fillStyle(oscurecer(color, 0.7), 1);
+      g.fillCircle(x + 12, 13, 5);
+    }
+  }
+}
 
-  const xd = 5 * s;
+function dibujarParedTile(g, e, x, s) {
+  const c = e.pared;
+  g.fillStyle(c, 1);
+  g.fillRect(x, 0, s, s);
+  const estilo = e.estiloPared;
+  if (estilo === 'edificio') {
+    g.fillStyle(aclarar(c, 25), 1);
+    g.fillRect(x, 0, s, 5);
+    g.fillStyle(0xd9c56b, 0.25);
+    g.fillRect(x + 6, 12, 6, 8);
+    g.fillRect(x + 20, 12, 6, 8);
+  } else if (estilo === 'valla') {
+    g.fillStyle(oscurecer(c, 0.7), 1);
+    for (let i = 0; i < s; i += 8) g.fillRect(x + i, 0, 1, s);
+    g.fillStyle(aclarar(c, 20), 1);
+    g.fillRect(x, 10, s, 3);
+    g.fillRect(x, 22, s, 3);
+  } else if (estilo === 'muro' || estilo === 'muroBlanco') {
+    g.lineStyle(1, oscurecer(c, 0.75), 1);
+    g.lineBetween(x, 10.5, x + s, 10.5);
+    g.lineBetween(x, 21.5, x + s, 21.5);
+    g.lineBetween(x + 12.5, 0, x + 12.5, 10);
+    g.lineBetween(x + 24.5, 11, x + 24.5, 21);
+    g.lineBetween(x + 6.5, 22, x + 6.5, s);
+    if (estilo === 'muroBlanco') {
+      g.fillStyle(0x3ea8ff, 0.6);
+      g.fillRect(x, 14, s, 3);
+    }
+  } else if (estilo === 'lamina') {
+    g.lineStyle(2, oscurecer(c, 0.7), 1);
+    for (let i = 3; i < s; i += 6) g.lineBetween(x + i, 0, x + i, s);
+    g.fillStyle(0xe0b52a, 1);
+    g.fillRect(x, 0, s, 4);
+  } else if (estilo === 'barandal') {
+    g.fillStyle(oscurecer(c, 0.6), 1);
+    g.fillRect(x, 12, s, 8);
+    g.fillStyle(aclarar(c, 30), 1);
+    g.fillRect(x, 14, s, 3);
+    for (let i = 2; i < s; i += 10) g.fillRect(x + i, 10, 3, 12);
+  } else if (estilo === 'sacos') {
+    g.fillStyle(oscurecer(c, 0.75), 1);
+    g.fillRect(x, 0, s, s);
+    g.fillStyle(c, 1);
+    for (let fila = 0; fila < 3; fila++) {
+      for (let col = 0; col < 3; col++) g.fillEllipse(x + col * 11 + (fila % 2 ? 6 : 1) + 4, fila * 11 + 5, 12, 9);
+    }
+  }
+  g.lineStyle(1, 0x000000, 0.4);
+  g.strokeRect(x + 0.5, 0.5, s - 1, s - 1);
+}
+
+export function dibujarTileset(g, temaId) {
+  const e = ESTILOS_TILES[temaId] || ESTILOS_TILES.avenida;
+  const s = TAMANO_TILE;
+  const rng = new Phaser.Math.RandomDataGenerator(['tiles-' + temaId]);
+  const enX = (indice) => indice * s;
+
+  dibujarExteriorTile(g, rng, e, enX(0), s, 0);
+
+  pisoBase(g, rng, e, enX(1), s);
+
+  pisoBase(g, rng, e, enX(2), s);
+  g.fillStyle(0x4f0909, 0.8);
+  g.fillCircle(enX(2) + 12, 14, 7);
+  g.fillCircle(enX(2) + 20, 20, 4);
+  g.fillCircle(enX(2) + 6, 24, 2);
+
+  pisoBase(g, rng, e, enX(3), s);
+  g.lineStyle(1.5, 0x141416, 0.85);
+  g.lineBetween(enX(3) + 4, 6, enX(3) + 14, 15);
+  g.lineBetween(enX(3) + 14, 15, enX(3) + 11, 27);
+  g.lineBetween(enX(3) + 14, 15, enX(3) + 27, 18);
+
+  dibujarParedTile(g, e, enX(4), s);
+
+  const xd = enX(5);
   g.fillStyle(0x5a5f66, 1);
   g.fillRect(xd, 0, s, s);
   g.fillStyle(0x3a3e44, 1);
@@ -860,65 +992,366 @@ export function dibujarTileset(g, temaId) {
   g.fillStyle(0xc0392b, 1);
   g.fillCircle(xd + s / 2, s / 2, 3);
 
-  const xc = 6 * s;
-  g.fillStyle(t.asfalto, 1);
-  g.fillRect(xc, 0, s, s);
-  g.fillStyle(t.linea, 0.35);
-  g.fillRect(xc + 14, 4, 4, 10);
-  g.fillRect(xc + 14, 20, 4, 8);
+  pisoBase(g, rng, e, enX(6), s);
+  g.fillStyle(e.linea, 0.85);
+  g.fillRect(enX(6) + 2, s / 2 - 2, 14, 4);
+
+  pisoBase(g, rng, e, enX(7), s);
+  g.fillStyle(e.linea, 0.85);
+  g.fillRect(enX(7) + s / 2 - 2, 2, 4, 14);
+
+  const xa = enX(8);
+  g.fillStyle(e.acera, 1);
+  g.fillRect(xa, 0, s, s);
+  if (e.aceraPeligro) {
+    g.fillStyle(0xe0b52a, 0.9);
+    for (let i = -s; i < s; i += 12) g.fillTriangle(xa + Math.max(0, i), 0, xa + Math.min(s, i + 6), 0, xa + Math.max(0, i), Math.min(s, 6 - i));
+    g.fillStyle(0x1b1b1b, 0.9);
+    g.fillRect(xa, s - 6, s, 6);
+  } else {
+    g.lineStyle(1, oscurecer(e.acera, 0.8), 1);
+    g.strokeRect(xa + 0.5, 0.5, 15, 15);
+    g.strokeRect(xa + 16.5, 16.5, 15, 15);
+    g.strokeRect(xa + 16.5, 0.5, 15, 15);
+    g.strokeRect(xa + 0.5, 16.5, 15, 15);
+  }
+
+  dibujarExteriorTile(g, rng, e, enX(9), s, 1);
+  dibujarExteriorTile(g, rng, e, enX(10), s, 2);
+
+  pisoBase(g, rng, e, enX(11), s);
+  if (e.estiloPiso === 'baldosa') {
+    g.fillStyle(0x7a8085, 1);
+    g.fillRect(enX(11) + 12, 12, 8, 8);
+    g.lineStyle(1, 0x3a3e44, 1);
+    for (let i = 13; i < 20; i += 2) g.lineBetween(enX(11) + i, 13, enX(11) + i, 19);
+  } else {
+    g.fillStyle(0x17181a, 1);
+    g.fillCircle(enX(11) + 16, 16, 9);
+    g.lineStyle(1, 0x3a3b40, 1);
+    g.strokeCircle(enX(11) + 16, 16, 9);
+    g.lineBetween(enX(11) + 10, 16, enX(11) + 22, 16);
+  }
+
+  pisoBase(g, rng, e, enX(12), s);
+  g.fillStyle(0xe8e8e8, 0.55);
+  for (let y = 2; y < s; y += 8) g.fillRect(enX(12) + 3, y, s - 6, 4);
+
+  pisoBase(g, rng, e, enX(13), s);
+  g.fillStyle(0xe8e8e8, 0.55);
+  for (let x = 2; x < s; x += 8) g.fillRect(enX(13) + x, 3, 4, s - 6);
 }
 
-export function dibujarDecoracion(g, tipo) {
-  if (tipo === 'auto') {
-    g.fillStyle(0x000000, 0.35);
-    g.fillRoundedRect(4, 6, 56, 28, 6);
+function sombra(g, x, y, w, h) {
+  g.fillStyle(0x000000, 0.35);
+  g.fillRoundedRect(x + 3, y + 3, w, h, 4);
+}
+
+const DIBUJOS_DECORACION = {
+  auto(g) {
+    sombra(g, 2, 3, 56, 28);
+    g.fillStyle(0x8a2a2a, 1);
+    g.fillRoundedRect(2, 3, 56, 28, 6);
+    g.fillStyle(0x1b1d22, 1);
+    g.fillRect(18, 7, 7, 20);
+    g.fillRect(37, 7, 9, 20);
+    g.fillStyle(0xd8d8d8, 1);
+    g.fillRect(55, 6, 3, 5);
+    g.fillRect(55, 23, 3, 5);
+    g.lineStyle(1, 0x000000, 0.5);
+    g.lineBetween(30, 4, 26, 30);
+  },
+  autoQuemado(g) {
+    sombra(g, 2, 3, 56, 28);
     g.fillStyle(0x2b2622, 1);
     g.fillRoundedRect(2, 3, 56, 28, 6);
     g.fillStyle(0x6e3b1f, 1);
-    g.fillRect(20, 7, 6, 20);
-    g.fillRect(38, 7, 8, 20);
+    g.fillRect(18, 7, 7, 20);
+    g.fillRect(37, 7, 9, 20);
     g.fillStyle(0x6e3b1f, 0.8);
-    g.fillCircle(14, 18, 5);
-    return;
-  }
-  if (tipo === 'caja') {
+    g.fillCircle(12, 17, 6);
+    g.fillCircle(48, 12, 4);
+    g.fillStyle(0x111111, 1);
+    g.fillCircle(30, 17, 5);
+  },
+  barricada(g) {
+    sombra(g, 1, 2, 48, 12);
+    g.fillStyle(0x7a5a2e, 1);
+    g.fillRect(1, 2, 48, 12);
+    g.fillStyle(0xd8d8d8, 1);
+    for (let i = 0; i < 4; i++) g.fillRect(4 + i * 12, 2, 6, 12);
+  },
+  bolsas(g) {
+    [[9, 10, 8], [20, 9, 9], [14, 18, 8], [26, 18, 6]].forEach(([x, y, r]) => {
+      g.fillStyle(0x000000, 0.3);
+      g.fillCircle(x + 2, y + 2, r);
+      g.fillStyle(0x1b1d22, 1);
+      g.fillCircle(x, y, r);
+      g.fillStyle(0x3a3d44, 1);
+      g.fillCircle(x - 2, y - 2, r * 0.4);
+    });
+  },
+  farola(g) {
     g.fillStyle(0x000000, 0.3);
-    g.fillRect(4, 4, 26, 26);
+    g.fillCircle(14, 14, 7);
+    g.fillStyle(0x3a3d44, 1);
+    g.fillCircle(12, 12, 6);
+    g.fillStyle(0xfff2b0, 0.9);
+    g.fillCircle(12, 12, 3);
+  },
+  cono(g) {
+    g.fillStyle(0x000000, 0.3);
+    g.fillCircle(9, 9, 7);
+    g.fillStyle(0xff7a1a, 1);
+    g.fillCircle(8, 8, 7);
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(8, 8, 4);
+    g.fillStyle(0xff7a1a, 1);
+    g.fillCircle(8, 8, 2);
+  },
+  arbol(g) {
+    g.fillStyle(0x000000, 0.3);
+    g.fillCircle(32, 33, 26);
+    g.fillStyle(0x1f3318, 1);
+    g.fillCircle(28, 28, 26);
+    g.fillStyle(0x2f4a23, 1);
+    g.fillCircle(22, 22, 14);
+    g.fillCircle(36, 30, 12);
+    g.fillCircle(26, 38, 10);
+    g.fillStyle(0x3f6230, 1);
+    g.fillCircle(19, 18, 6);
+  },
+  arbusto(g) {
+    g.fillStyle(0x000000, 0.3);
+    g.fillCircle(16, 17, 13);
+    g.fillStyle(0x24381c, 1);
+    g.fillCircle(14, 14, 13);
+    g.fillStyle(0x36522a, 1);
+    g.fillCircle(11, 11, 6);
+  },
+  banca(g) {
+    sombra(g, 1, 2, 40, 14);
+    g.fillStyle(0x5a3d22, 1);
+    g.fillRect(1, 2, 40, 14);
+    g.lineStyle(1, 0x3a2614, 1);
+    g.lineBetween(1, 7, 41, 7);
+    g.lineBetween(1, 11, 41, 11);
+    g.fillStyle(0x2a2a2a, 1);
+    g.fillRect(1, 1, 3, 16);
+    g.fillRect(38, 1, 3, 16);
+  },
+  cama(g) {
+    sombra(g, 2, 2, 34, 58);
+    g.fillStyle(0x9aa0a5, 1);
+    g.fillRect(2, 2, 34, 58);
+    g.fillStyle(0xf2f2f2, 1);
+    g.fillRect(4, 4, 30, 54);
+    g.fillStyle(0xffffff, 1);
+    g.fillRoundedRect(8, 6, 22, 10, 3);
+    g.fillStyle(0x3e78b8, 1);
+    g.fillRect(4, 26, 30, 32);
+    g.fillStyle(0x6b0f0f, 0.85);
+    g.fillCircle(20, 30, 6);
+    g.fillCircle(26, 40, 3);
+  },
+  camilla(g) {
+    sombra(g, 2, 2, 26, 50);
+    g.fillStyle(0x6e7378, 1);
+    g.fillRect(2, 2, 26, 50);
+    g.fillStyle(0xe8e8e8, 1);
+    g.fillRect(4, 4, 22, 46);
+    g.fillStyle(0x6b0f0f, 0.85);
+    g.fillCircle(15, 26, 7);
+    g.fillStyle(0x222222, 1);
+    g.fillCircle(4, 4, 2);
+    g.fillCircle(26, 4, 2);
+    g.fillCircle(4, 50, 2);
+    g.fillCircle(26, 50, 2);
+  },
+  portasuero(g) {
+    g.fillStyle(0x000000, 0.3);
+    g.fillCircle(10, 10, 8);
+    g.lineStyle(2, 0x9aa0a5, 1);
+    g.strokeCircle(9, 9, 7);
+    g.fillStyle(0xbfe3ff, 0.9);
+    g.fillRoundedRect(5, 3, 8, 10, 2);
+    g.fillStyle(0xc0392b, 0.8);
+    g.fillRect(6, 9, 6, 3);
+  },
+  sillaRuedas(g) {
+    sombra(g, 3, 3, 22, 22);
+    g.fillStyle(0x222222, 1);
+    g.fillRect(2, 3, 4, 22);
+    g.fillRect(20, 3, 4, 22);
+    g.fillStyle(0x3e78b8, 1);
+    g.fillRect(6, 6, 14, 16);
+    g.fillStyle(0x9aa0a5, 1);
+    g.fillRect(6, 3, 14, 4);
+  },
+  carrito(g) {
+    sombra(g, 2, 2, 30, 22);
+    g.fillStyle(0xdfe4e8, 1);
+    g.fillRect(2, 2, 30, 22);
+    g.fillStyle(0xc0392b, 1);
+    g.fillRect(14, 6, 6, 14);
+    g.fillRect(10, 10, 14, 6);
+    g.lineStyle(1, 0x6e7378, 1);
+    g.strokeRect(2.5, 2.5, 29, 21);
+  },
+  caja(g) {
+    sombra(g, 2, 2, 26, 26);
     g.fillStyle(0x8a6234, 1);
     g.fillRect(2, 2, 26, 26);
     g.lineStyle(2, 0x5a3d1e, 1);
     g.strokeRect(3, 3, 24, 24);
     g.lineBetween(3, 3, 27, 27);
     g.lineBetween(27, 3, 3, 27);
-    return;
-  }
-  if (tipo === 'barril') {
+  },
+  barril(g) {
+    g.fillStyle(0x000000, 0.3);
+    g.fillCircle(14, 14, 10);
     g.fillStyle(0x2f5d3a, 1);
     g.fillCircle(12, 12, 10);
     g.lineStyle(1.5, 0x111111, 0.8);
     g.strokeCircle(12, 12, 10);
     g.strokeCircle(12, 12, 5);
-    return;
-  }
-  if (tipo === 'escombros') {
+  },
+  contenedor(g) {
+    sombra(g, 2, 2, 116, 42);
+    g.fillStyle(0xa33b2b, 1);
+    g.fillRect(2, 2, 116, 42);
+    g.lineStyle(1, 0x000000, 0.35);
+    for (let i = 10; i < 116; i += 8) g.lineBetween(2 + i, 4, 2 + i, 42);
+    g.lineStyle(2, 0x5a1f16, 1);
+    g.strokeRect(3, 3, 114, 40);
+  },
+  barreraJersey(g) {
+    sombra(g, 1, 2, 60, 12);
+    g.fillStyle(0x9a9a96, 1);
+    g.fillRect(1, 2, 60, 12);
+    g.fillStyle(0xb8b8b4, 1);
+    g.fillRect(1, 5, 60, 5);
+    g.fillStyle(0xc0392b, 0.8);
+    g.fillRect(4, 2, 6, 12);
+    g.fillRect(52, 2, 6, 12);
+  },
+  sacos(g) {
+    for (let i = 0; i < 5; i++) {
+      const x = 8 + i * 13;
+      const y = 10 + Math.abs(i - 2) * 3;
+      g.fillStyle(0x000000, 0.3);
+      g.fillEllipse(x + 2, y + 2, 16, 11);
+      g.fillStyle(0x8a7a52, 1);
+      g.fillEllipse(x, y, 16, 11);
+      g.lineStyle(1, 0x5a4f35, 1);
+      g.strokeEllipse(x, y, 16, 11);
+    }
+  },
+  tienda(g) {
+    sombra(g, 2, 2, 78, 54);
+    g.fillStyle(0x4b5a33, 1);
+    g.fillRect(2, 2, 78, 54);
+    g.fillStyle(0x3a4627, 1);
+    g.fillRect(2, 26, 78, 6);
+    g.lineStyle(1, 0x2a331c, 1);
+    g.strokeRect(2.5, 2.5, 77, 53);
+  },
+  cajaMunicion(g) {
+    sombra(g, 2, 2, 24, 16);
+    g.fillStyle(0x4b5a33, 1);
+    g.fillRect(2, 2, 24, 16);
+    g.fillStyle(0xc9a227, 1);
+    g.fillRect(6, 7, 16, 3);
+  },
+  jeep(g) {
+    sombra(g, 2, 3, 54, 30);
+    g.fillStyle(0x4b5a33, 1);
+    g.fillRoundedRect(2, 3, 54, 30, 4);
+    g.fillStyle(0x2a331c, 1);
+    g.fillRect(16, 7, 8, 22);
+    g.fillStyle(0x3a4627, 1);
+    g.fillRect(30, 6, 20, 24);
+  },
+  aire(g) {
+    sombra(g, 2, 2, 24, 20);
+    g.fillStyle(0x6e7378, 1);
+    g.fillRect(2, 2, 24, 20);
+    g.lineStyle(1, 0x3a3e44, 1);
+    for (let i = 6; i < 22; i += 4) g.lineBetween(4, i, 24, i);
+    g.fillStyle(0x3a3e44, 1);
+    g.fillCircle(14, 12, 5);
+  },
+  tragaluz(g) {
+    g.fillStyle(0x5a5f66, 1);
+    g.fillRect(1, 1, 30, 30);
+    g.fillStyle(0x7fb8d8, 0.5);
+    g.fillRect(4, 4, 24, 24);
+    g.lineStyle(1, 0x3a3e44, 1);
+    g.lineBetween(16, 4, 16, 28);
+    g.lineBetween(4, 16, 28, 16);
+  },
+  helipuerto(g) {
+    g.fillStyle(0x3a3d44, 1);
+    g.fillCircle(45, 45, 44);
+    g.lineStyle(3, 0xe8e8e8, 0.9);
+    g.strokeCircle(45, 45, 36);
+    g.fillStyle(0xe8e8e8, 0.9);
+    g.fillRect(31, 28, 6, 34);
+    g.fillRect(53, 28, 6, 34);
+    g.fillRect(31, 42, 28, 6);
+  },
+  escombros(g) {
     const colores = [0x55565c, 0x6b5a45, 0x3e3f44, 0x8c8c8c];
     for (let i = 0; i < 9; i++) {
       g.fillStyle(colores[i % colores.length], 1);
       g.fillRect(3 + ((i * 7) % 26), 3 + ((i * 11) % 22), 4 + (i % 3), 3 + (i % 2));
     }
-    return;
+  },
+  sangre(g) {
+    g.fillStyle(0x4f0909, 0.85);
+    g.fillCircle(16, 14, 9);
+    g.fillCircle(24, 18, 6);
+    g.fillCircle(10, 20, 5);
+    g.fillStyle(0x6b0f0f, 0.9);
+    g.fillCircle(30, 8, 2);
+    g.fillCircle(4, 6, 2);
   }
-  g.fillStyle(0x4f0909, 0.85);
-  g.fillCircle(16, 14, 9);
-  g.fillCircle(24, 18, 6);
-  g.fillCircle(10, 20, 5);
-  g.fillStyle(0x6b0f0f, 0.9);
-  g.fillCircle(30, 8, 2);
-  g.fillCircle(4, 6, 2);
+};
+
+export const TAMANO_DECORACION = {
+  auto: [62, 36], autoQuemado: [62, 36], barricada: [52, 18], bolsas: [36, 30], farola: [24, 24], cono: [18, 18],
+  arbol: [62, 64], arbusto: [32, 32], banca: [44, 20], cama: [40, 64], camilla: [32, 56], portasuero: [20, 20],
+  sillaRuedas: [28, 28], carrito: [36, 28], caja: [32, 32], barril: [26, 26], contenedor: [122, 48],
+  barreraJersey: [64, 18], sacos: [76, 24], tienda: [84, 60], cajaMunicion: [30, 22], jeep: [60, 36],
+  aire: [30, 26], tragaluz: [32, 32], helipuerto: [90, 90], escombros: [34, 30], sangre: [34, 30]
+};
+
+export const DECORACIONES = Object.keys(TAMANO_DECORACION);
+
+export function dibujarDecoracion(g, tipo) {
+  DIBUJOS_DECORACION[tipo](g);
 }
 
-export const DECORACIONES = ['auto', 'caja', 'barril', 'escombros', 'sangre'];
-export const TAMANO_DECORACION = { auto: [62, 36], caja: [32, 32], barril: [24, 24], escombros: [34, 30], sangre: [34, 30] };
+export function dibujarLlama(g) {
+  g.fillStyle(0xc0391b, 0.85);
+  g.fillEllipse(14, 24, 24, 22);
+  g.fillTriangle(4, 22, 14, 0, 24, 22);
+  g.fillStyle(0xff7a1a, 0.95);
+  g.fillEllipse(14, 26, 16, 16);
+  g.fillTriangle(8, 24, 14, 6, 20, 24);
+  g.fillStyle(0xffd23f, 1);
+  g.fillEllipse(14, 28, 9, 9);
+  g.fillTriangle(11, 28, 14, 14, 17, 28);
+}
+
+export function dibujarBrillo(g) {
+  for (let i = 8; i >= 1; i--) {
+    g.fillStyle(0xff7a1a, 0.06);
+    g.fillCircle(64, 64, i * 8);
+  }
+  g.fillStyle(0xffd27a, 0.12);
+  g.fillCircle(64, 64, 14);
+}
 
 export function dibujarArma(g, armaId, color) {
   const largos = { pistola: 18, revolver: 22, escopeta: 34, subfusil: 26, ametralladora: 38, rifle: 40, lanzagranadas: 32 };

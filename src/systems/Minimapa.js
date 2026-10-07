@@ -1,7 +1,6 @@
 import { ANCHO, MAZMORRA } from '../config.js';
 import { salaEn } from './Mazmorra.js';
 
-const ESCALA = 0.035;
 const PROFUNDIDAD = 32;
 const COLORES_SALA = { inicio: 0x9aa4c7, combate: 0x6b7090, tesoro: 0x3ea8ff, tienda: 0xe8f070, salida: 0xb36bff, jefe: 0xff4d6d };
 const INTERVALO_MS = 200;
@@ -11,8 +10,9 @@ export default class Minimapa {
     this.scene = scene;
     this.mazmorra = mazmorra;
     const t = MAZMORRA.tile;
-    this.ancho = mazmorra.ancho * t * ESCALA;
-    this.alto = mazmorra.alto * t * ESCALA;
+    this.escala = MAZMORRA.tamanoMinimapa / (Math.max(mazmorra.ancho, mazmorra.alto) * t);
+    this.ancho = mazmorra.ancho * t * this.escala;
+    this.alto = mazmorra.alto * t * this.escala;
     this.x = ANCHO - this.ancho - 14;
     this.y = 14;
     this.grafico = scene.add.graphics().setScrollFactor(0).setDepth(PROFUNDIDAD);
@@ -31,7 +31,7 @@ export default class Minimapa {
     if (tiempo < this.proximo) return;
     this.proximo = tiempo + INTERVALO_MS;
     const g = this.grafico;
-    const t = MAZMORRA.tile * ESCALA;
+    const t = MAZMORRA.tile * this.escala;
     g.clear();
     g.fillStyle(0x000000, 0.5);
     g.fillRect(this.x - 4, this.y - 4, this.ancho + 8, this.alto + 8);
