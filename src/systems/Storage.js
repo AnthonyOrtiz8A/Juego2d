@@ -2,6 +2,7 @@ const CLAVE_RECORD = 'shooter2d.record';
 const CLAVE_SONIDO = 'shooter2d.sonido';
 const CLAVE_RECORD_PACMAN = 'shooter2d.recordPacman';
 const CLAVE_NOMBRE = 'shooter2d.nombre';
+const CLAVE_PERSONAJE = 'shooter2d.personaje';
 
 function leer(clave) {
   try {
@@ -47,6 +48,14 @@ const Storage = {
 
   guardarNombre(nombre) {
     escribir(CLAVE_NOMBRE, nombre);
+  },
+
+  obtenerPersonaje() {
+    return leer(CLAVE_PERSONAJE) || '';
+  },
+
+  guardarPersonaje(id) {
+    escribir(CLAVE_PERSONAJE, id);
   },
 
   sonidoActivo() {

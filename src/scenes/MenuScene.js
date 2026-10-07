@@ -5,7 +5,8 @@ import Sonido from '../systems/Sonido.js';
 import { crearTexto, crearBoton } from '../systems/Interfaz.js';
 import { esDispositivoTactil } from '../systems/TouchControls.js';
 
-const ALTO_BOTON = 46;
+const ALTO_BOTON = 42;
+const ANCHO_BOTON = 300;
 let pantallaCompletaIntentada = false;
 
 export default class MenuScene extends Phaser.Scene {
@@ -28,15 +29,16 @@ export default class MenuScene extends Phaser.Scene {
     crearTexto(this, ANCHO / 2, 168, 'Sobrevive a las oleadas infinitas', 18, '#9aa4c7').setOrigin(0.5);
     crearTexto(this, ANCHO / 2, 205, 'Récord: ' + Storage.obtenerRecord(), 22, '#fff27a').setOrigin(0.5);
 
-    crearBoton(this, ANCHO / 2, 262, 'Jugar', () => this.jugar(), 280, ALTO_BOTON);
-    crearBoton(this, ANCHO / 2, 316, 'Multijugador', () => this.scene.start('Lobby'), 280, ALTO_BOTON);
-    crearBoton(this, ANCHO / 2, 370, 'Minijuego: Pac-Man', () => this.scene.start('Pacman'), 280, ALTO_BOTON);
-    const botonSonido = crearBoton(this, ANCHO / 2, 424, this.textoSonido(), () => {
+    crearBoton(this, ANCHO / 2, 252, 'Supervivencia', () => this.jugar(), ANCHO_BOTON, ALTO_BOTON);
+    this.crearBotonHistoria(300);
+    crearBoton(this, ANCHO / 2, 348, 'Multijugador', () => this.scene.start('Lobby'), ANCHO_BOTON, ALTO_BOTON);
+    crearBoton(this, ANCHO / 2, 396, 'Minijuego: Pac-Man', () => this.scene.start('Pacman'), ANCHO_BOTON, ALTO_BOTON);
+    const botonSonido = crearBoton(this, ANCHO / 2, 444, this.textoSonido(), () => {
       Sonido.alternar();
       botonSonido.etiqueta.setText(this.textoSonido());
-    }, 280, ALTO_BOTON);
+    }, ANCHO_BOTON, ALTO_BOTON);
 
-    crearTexto(this, ANCHO / 2, 520, this.textoControles(), 16, '#9aa4c7').setOrigin(0.5).setLineSpacing(6);
+    crearTexto(this, ANCHO / 2, 528, this.textoControles(), 15, '#9aa4c7').setOrigin(0.5).setLineSpacing(5);
     if (this.aviso) crearTexto(this, ANCHO / 2, 578, this.aviso, 16, '#ff4d6d').setOrigin(0.5);
 
     this.crearPantallaCompleta();
@@ -45,6 +47,10 @@ export default class MenuScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-SPACE', (evento) => {
       if (!evento.repeat) this.jugar();
     });
+  }
+
+  crearBotonHistoria(y) {
+    crearBoton(this, ANCHO / 2, y, 'Modo historia', () => this.scene.start('Personajes', { modo: 'historia', nivel: 0 }), ANCHO_BOTON, ALTO_BOTON);
   }
 
   crearPantallaCompleta() {
@@ -76,12 +82,12 @@ export default class MenuScene extends Phaser.Scene {
 
   textoControles() {
     if (esDispositivoTactil(this.game)) {
-      return 'Mover: joystick (lado izquierdo)\nDisparar: mantén pulsado el lado derecho (apunta solo)\nHabilidades: botones E, Q (oleada 4) y R (oleada 8)';
+      return 'Mover: joystick (lado izquierdo)   ·   Disparar: lado derecho (apunta solo)\nHabilidades: botones E, Q y C   ·   Ulti: botón ULTI   ·   Historia: ARMA y F';
     }
-    return 'Mover: WASD o flechas   ·   Apuntar: mouse\nDisparar: clic izquierdo (mantener)   ·   Pausa: P o Esc\nHabilidades: E   ·   Q (oleada 4)   ·   R (oleada 8)';
+    return 'Mover: WASD   ·   Apuntar: mouse   ·   Disparar: clic   ·   Pausa: P o Esc\nHabilidades: E, Q y C   ·   Ulti: R   ·   Reanimar: V   ·   Arma: X o rueda   ·   Usar: F';
   }
 
   jugar() {
-    this.scene.start('Game');
+    this.scene.start('Personajes', { modo: 'supervivencia' });
   }
 }

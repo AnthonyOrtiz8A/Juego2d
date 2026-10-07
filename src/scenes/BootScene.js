@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { MUNDO, COLORES, TACTIL, PACMAN } from '../config.js';
-import { ESTUDIANTE, ZOMBIES, dibujarEstudiante, dibujarZombie, dibujarCiudad, dibujarAcido, dibujarCorazon } from '../systems/Dibujos.js';
+import { MUNDO, COLORES, TACTIL, PACMAN, COFRES, ARMAS, PERSONAJES } from '../config.js';
+import { ESTUDIANTE, ZOMBIES, TAMANO_COFRE, DECORACIONES, TAMANO_DECORACION, dibujarEstudiante, dibujarZombie, dibujarCiudad, dibujarAcido, dibujarCorazon, dibujarCofre, dibujarDecoracion, dibujarArma, dibujarPortal, dibujarVendedor, dibujarPedestal, dibujarDedo, dibujarLlama, dibujarBrillo, dibujarObjetoPasiva, dibujarObjetoMejora, dibujarPersonaje, dibujarIconoArmadura, dibujarOrbeEnergia, dibujarTorreta, dibujarAnilloFuego, dibujarMarca, dibujarHoyo } from '../systems/Dibujos.js';
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -42,6 +42,36 @@ export default class BootScene extends Phaser.Scene {
     });
 
     this.crearPacman();
+
+    DECORACIONES.forEach((tipo) => {
+      const [ancho, alto] = TAMANO_DECORACION[tipo];
+      this.crearTextura('deco-' + tipo, ancho, alto, (g) => dibujarDecoracion(g, tipo));
+    });
+    Object.keys(ARMAS).forEach((id) => {
+      this.crearTextura('arma-' + id, 46, 24, (g) => dibujarArma(g, id, ARMAS[id].color));
+    });
+    this.crearTextura('portal', 80, 80, dibujarPortal);
+    this.crearTextura('vendedor', 44, 44, dibujarVendedor);
+    this.crearTextura('pedestal', 46, 44, dibujarPedestal);
+    this.crearTextura('dedo', 20, 14, dibujarDedo);
+    this.crearTextura('fuego', 28, 36, dibujarLlama);
+    this.crearTextura('objeto-pasiva', 32, 32, dibujarObjetoPasiva);
+    Object.keys(PERSONAJES).forEach((id) => {
+      this.crearTextura('jugador-' + id, ESTUDIANTE.tamano, ESTUDIANTE.tamano, (g) => dibujarPersonaje(g, PERSONAJES[id]));
+    });
+    this.crearTextura('energia', 20, 20, dibujarOrbeEnergia);
+    this.crearTextura('icono-armadura', 20, 21, dibujarIconoArmadura);
+    this.crearTextura('torreta', 44, 44, dibujarTorreta);
+    this.crearTextura('anillo-fuego', 280, 280, dibujarAnilloFuego);
+    this.crearTextura('marca', 120, 120, dibujarMarca);
+    this.crearTextura('hoyo', 48, 48, dibujarHoyo);
+    this.crearTextura('objeto-mejora', 32, 32, dibujarObjetoMejora);
+    this.crearTextura('brillo', 128, 128, dibujarBrillo);
+
+    Object.keys(COFRES.tipos).forEach((tipo) => {
+      this.crearTextura('cofre-' + tipo, TAMANO_COFRE.ancho, TAMANO_COFRE.alto, (g) => dibujarCofre(g, tipo, false));
+      this.crearTextura('cofre-' + tipo + '-abierto', TAMANO_COFRE.ancho, TAMANO_COFRE.alto, (g) => dibujarCofre(g, tipo, true));
+    });
 
     this.scene.start('Menu');
   }

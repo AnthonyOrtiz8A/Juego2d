@@ -126,6 +126,15 @@
         opacity: 0.5;
         cursor: default;
       }
+      .lobby-modo {
+        flex: 1;
+        font-size: 15px !important;
+        border-color: #4a5170 !important;
+      }
+      .lobby-activo {
+        border-color: #fff27a !important;
+        background: #2c3766 !important;
+      }
       .lobby-secundario {
         border-color: #4a5170 !important;
         color: #9aa4c7 !important;
@@ -163,6 +172,20 @@
         background: #1d2442;
         border-radius: 6px;
         font-size: 16px;
+      }
+      .lobby-personajes {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+      }
+      .lobby button.lobby-personaje {
+        font-size: 13px;
+        padding: 7px 6px;
+        border-color: #4a5170;
+        border-left-width: 8px;
+      }
+      .lobby-equipo {
+        color: #4cd97b;
       }
       .lobby-estado {
         margin: 0;

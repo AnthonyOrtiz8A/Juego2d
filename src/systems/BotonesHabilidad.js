@@ -7,7 +7,7 @@ const TAMANO = 68;
 const POSICIONES = {
   E: { x: ANCHO - 115, y: ALTO - 225 },
   Q: { x: ANCHO - 225, y: ALTO - 95 },
-  R: { x: ANCHO - 220, y: ALTO - 210 }
+  C: { x: ANCHO - 220, y: ALTO - 210 }
 };
 
 export default class BotonesHabilidad {
@@ -19,7 +19,7 @@ export default class BotonesHabilidad {
     this.widgets = {};
     this.segundos = {};
     Object.keys(POSICIONES).forEach((tecla) => this.crear(tecla, POSICIONES[tecla].x, POSICIONES[tecla].y));
-    this.textoPc = crearTexto(scene, 16, 92, '', 14, '#9aa4c7').setDepth(PROFUNDIDAD);
+    this.textoPc = crearTexto(scene, 16, 108, '', 14, '#9aa4c7').setDepth(PROFUNDIDAD);
     this.refrescar();
   }
 

@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { Peer } from 'peerjs';
 import { RED } from '../config.js';
+import Storage from './Storage.js';
+import { personajeValido } from './Personajes.js';
 
 const LETRAS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 export const ID_ANFITRION = 'anfitrion';
@@ -43,7 +45,10 @@ export default class Red extends Phaser.Events.EventEmitter {
     this.nombre = '';
     this.jugadores = [];
     this.clientes = new Map();
+    this.rapidos = new Map();
     this.anfitrion = null;
+    this.rapido = null;
+    this.modo = 'supervivencia';
     this.enPartida = false;
     this.cerrada = false;
     this.alSnapshot = null;
@@ -53,7 +58,7 @@ export default class Red extends Phaser.Events.EventEmitter {
     this.esAnfitrion = true;
     this.nombre = limpiarNombre(nombre);
     this.miId = ID_ANFITRION;
-    this.jugadores = [{ id: ID_ANFITRION, nombre: this.nombre }];
+    this.jugadores = [{ id: ID_ANFITRION, nombre: this.nombre, personaje: personajeValido(Storage.obtenerPersonaje()) }];
     return this.abrirAnfitrion(RED.intentosCodigo);
   }
 
@@ -80,15 +85,36 @@ export default class Red extends Phaser.Events.EventEmitter {
   }
 
   alConectar(conexion) {
+    if (conexion.metadata && conexion.metadata.canal === 'rapido') {
+      this.alConectarRapido(conexion);
+      return;
+    }
     conexion.on('data', (datos) => {
       if (!this.clientes.has(conexion.peer)) {
         this.recibirSaludo(conexion, datos);
+        return;
+      }
+      if (datos && datos.t === 'personaje') {
+        this.fijarPersonaje(conexion.peer, datos.id);
         return;
       }
       this.emit('mensaje', conexion.peer, datos);
     });
     conexion.on('close', () => this.quitarCliente(conexion.peer));
     conexion.on('error', () => this.quitarCliente(conexion.peer));
+  }
+
+  alConectarRapido(conexion) {
+    conexion.on('open', () => {
+      if (this.clientes.has(conexion.peer)) this.rapidos.set(conexion.peer, conexion);
+      else conexion.close();
+    });
+    conexion.on('data', (datos) => {
+      if (this.rapidos.get(conexion.peer) === conexion) this.emit('mensaje', conexion.peer, datos);
+    });
+    conexion.on('close', () => {
+      if (this.rapidos.get(conexion.peer) === conexion) this.rapidos.delete(conexion.peer);
+    });
   }
 
   recibirSaludo(conexion, datos) {
@@ -102,7 +128,7 @@ export default class Red extends Phaser.Events.EventEmitter {
       return;
     }
     this.clientes.set(conexion.peer, conexion);
-    this.jugadores.push({ id: conexion.peer, nombre: limpiarNombre(datos.nombre) });
+    this.jugadores.push({ id: conexion.peer, nombre: limpiarNombre(datos.nombre), personaje: personajeValido(datos.personaje) });
     this.enviarLobby();
   }
 
@@ -114,13 +140,36 @@ export default class Red extends Phaser.Events.EventEmitter {
   quitarCliente(id) {
     if (!this.clientes.has(id)) return;
     this.clientes.delete(id);
+    const rapido = this.rapidos.get(id);
+    if (rapido) rapido.close();
+    this.rapidos.delete(id);
     this.jugadores = this.jugadores.filter((jugador) => jugador.id !== id);
     this.emit('salio', id);
     if (!this.enPartida) this.enviarLobby();
   }
 
+  fijarPersonaje(id, personaje) {
+    if (this.enPartida) return;
+    const jugador = this.jugadores.find((otro) => otro.id === id);
+    if (!jugador) return;
+    jugador.personaje = personajeValido(personaje);
+    this.enviarLobby();
+  }
+
+  elegirPersonaje(personaje) {
+    const id = personajeValido(personaje);
+    Storage.guardarPersonaje(id);
+    if (this.esAnfitrion) this.fijarPersonaje(this.miId, id);
+    else this.enviarAnfitrion({ t: 'personaje', id });
+  }
+
+  personajePropio() {
+    const jugador = this.jugadores.find((otro) => otro.id === this.miId);
+    return personajeValido(jugador ? jugador.personaje : Storage.obtenerPersonaje());
+  }
+
   enviarLobby() {
-    this.enviarATodos({ t: 'lobby', jugadores: this.jugadores, codigo: this.codigo });
+    this.enviarATodos({ t: 'lobby', jugadores: this.jugadores, codigo: this.codigo, modo: this.modo });
     this.emit('lobby', this.jugadores);
   }
 
@@ -144,7 +193,7 @@ export default class Red extends Phaser.Events.EventEmitter {
         this.miId = id;
         const conexion = peer.connect(RED.prefijo + this.codigo, { reliable: true, serialization: 'json' });
         this.anfitrion = conexion;
-        conexion.on('open', () => conexion.send({ t: 'hola', nombre: this.nombre }));
+        conexion.on('open', () => conexion.send({ t: 'hola', nombre: this.nombre, personaje: personajeValido(Storage.obtenerPersonaje()) }));
         conexion.on('data', (datos) => {
           if (datos.t === 'rechazo') {
             fallar(datos.motivo);
@@ -152,9 +201,11 @@ export default class Red extends Phaser.Events.EventEmitter {
           }
           if (datos.t === 'lobby') {
             this.jugadores = datos.jugadores;
+            this.modo = datos.modo || 'supervivencia';
             if (!resuelto) {
               resuelto = true;
               clearTimeout(espera);
+              this.abrirCanalRapido(peer);
               resolver();
             }
             this.emit('lobby', datos.jugadores);
@@ -171,6 +222,17 @@ export default class Red extends Phaser.Events.EventEmitter {
     });
   }
 
+  abrirCanalRapido(peer) {
+    const rapido = peer.connect(RED.prefijo + this.codigo, { reliable: false, serialization: 'json', metadata: { canal: 'rapido' } });
+    rapido.on('open', () => {
+      this.rapido = rapido;
+    });
+    rapido.on('data', (datos) => this.alMensajeAnfitrion(datos));
+    rapido.on('close', () => {
+      if (this.rapido === rapido) this.rapido = null;
+    });
+  }
+
   alMensajeAnfitrion(datos) {
     switch (datos.t) {
       case 's':
@@ -178,10 +240,14 @@ export default class Red extends Phaser.Events.EventEmitter {
         break;
       case 'iniciar':
         this.jugadores = datos.jugadores;
-        this.irA('Cliente', { red: this });
+        this.modo = datos.modo;
+        this.irA('Cliente', { red: this, modo: datos.modo, nivel: datos.nivel, semilla: datos.semilla });
+        break;
+      case 'nivel':
+        this.irA('Cliente', { red: this, modo: datos.modo, nivel: datos.nivel, semilla: datos.semilla });
         break;
       case 'fin':
-        this.irA('GameOver', { puntos: datos.puntos, oleada: datos.oleada, red: this });
+        this.irA('GameOver', { puntos: datos.puntos, oleada: datos.oleada, modo: datos.modo, nivel: datos.nivel, victoria: datos.victoria, red: this });
         break;
       case 'sala':
         this.irA('Lobby', { red: this });
@@ -203,13 +269,22 @@ export default class Red extends Phaser.Events.EventEmitter {
     else this.game.scene.start(clave, datos);
   }
 
-  iniciarPartida() {
-    this.enPartida = true;
-    this.enviarATodos({ t: 'iniciar', jugadores: this.jugadores });
+  cambiarModo(modo) {
+    this.modo = modo;
+    this.enviarLobby();
   }
 
-  terminarPartida(puntos, oleada) {
-    this.enviarATodos({ t: 'fin', puntos, oleada });
+  iniciarPartida(nivel, semilla) {
+    this.enPartida = true;
+    this.enviarATodos({ t: 'iniciar', jugadores: this.jugadores, modo: this.modo, nivel, semilla });
+  }
+
+  cambiarNivel(nivel, semilla) {
+    this.enviarATodos({ t: 'nivel', modo: this.modo, nivel, semilla });
+  }
+
+  terminarPartida(datos) {
+    this.enviarATodos({ t: 'fin', ...datos });
   }
 
   volverASala() {
@@ -223,6 +298,12 @@ export default class Red extends Phaser.Events.EventEmitter {
     if (conexion && conexion.open) conexion.send(mensaje);
   }
 
+  enviarRapido(id, mensaje) {
+    const rapido = this.rapidos.get(id);
+    if (rapido && rapido.open) rapido.send(mensaje);
+    else this.enviar(id, mensaje);
+  }
+
   enviarATodos(mensaje) {
     this.clientes.forEach((conexion) => {
       if (conexion.open) conexion.send(mensaje);
@@ -233,12 +314,18 @@ export default class Red extends Phaser.Events.EventEmitter {
     if (this.anfitrion && this.anfitrion.open) this.anfitrion.send(mensaje);
   }
 
+  enviarAnfitrionRapido(mensaje) {
+    if (this.rapido && this.rapido.open) this.rapido.send(mensaje);
+    else this.enviarAnfitrion(mensaje);
+  }
+
   cerrar() {
     if (this.cerrada) return;
     this.cerrada = true;
     this.alSnapshot = null;
     this.removeAllListeners();
     this.clientes.clear();
+    this.rapidos.clear();
     if (this.peer) this.peer.destroy();
   }
 }

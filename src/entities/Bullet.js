@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { BALA, MUNDO } from '../config.js';
+import { BALA } from '../config.js';
 
 const MARGEN = 40;
 
@@ -8,10 +8,21 @@ export default class Bullet extends Phaser.Physics.Arcade.Sprite {
     super(scene, x, y, 'bala');
     this.expiraEn = 0;
     this.danio = BALA.danio;
+    this.perforacion = 0;
+    this.explosivo = 0;
+    this.empuje = 0;
+    this.duenio = null;
+    this.ultimoGolpe = null;
   }
 
   disparar(x, y, angulo, tiempo, velocidad = BALA.velocidad, vidaMs = BALA.vidaMs) {
     this.enableBody(true, x, y, true, true);
+    this.danio = BALA.danio;
+    this.perforacion = 0;
+    this.explosivo = 0;
+    this.empuje = 0;
+    this.duenio = null;
+    this.ultimoGolpe = null;
     this.rotation = angulo;
     this.scene.physics.velocityFromRotation(angulo, velocidad, this.body.velocity);
     this.expiraEn = tiempo + vidaMs;
@@ -24,14 +35,10 @@ export default class Bullet extends Phaser.Physics.Arcade.Sprite {
   preUpdate(time, delta) {
     super.preUpdate(time, delta);
     if (!this.active) return;
-    if (
-      time > this.expiraEn ||
-      this.x < -MARGEN ||
-      this.x > MUNDO.ancho + MARGEN ||
-      this.y < -MARGEN ||
-      this.y > MUNDO.alto + MARGEN
-    ) {
-      this.desactivar();
-    }
+    const mundo = this.scene.limitesMundo;
+    const fuera = this.x < -MARGEN || this.x > mundo.ancho + MARGEN || this.y < -MARGEN || this.y > mundo.alto + MARGEN;
+    if (time <= this.expiraEn && !fuera) return;
+    if (this.explosivo && this.scene.detonar) this.scene.detonar(this);
+    else this.desactivar();
   }
 }

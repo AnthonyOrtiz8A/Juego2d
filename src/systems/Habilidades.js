@@ -7,7 +7,11 @@ export const DESCRIPCIONES = {
   onda: { nombre: 'Onda expansiva', corto: 'Onda', texto: 'Daña y empuja a\nlos enemigos\ncercanos' },
   rafaga: { nombre: 'Ráfaga', corto: 'Ráfaga', texto: 'Disparas balas\nen todas\nlas direcciones' },
   frenesi: { nombre: 'Frenesí', corto: 'Frenesí', texto: 'Triplica tu\ncadencia de\ndisparo' },
-  congelar: { nombre: 'Congelación', corto: 'Hielo', texto: 'Ralentiza a\ntodos los\nenemigos' }
+  congelar: { nombre: 'Congelación', corto: 'Hielo', texto: 'Ralentiza a\ntodos los\nenemigos' },
+  granada: { nombre: 'Granada', corto: 'Granada', texto: 'Lanzas una granada\nque explota hacia\ndonde apuntas' },
+  curacion: { nombre: 'Primeros auxilios', corto: 'Curar', texto: 'Recuperas 1 vida\ny 1 de armadura' },
+  salto: { nombre: 'Salto', corto: 'Salto', texto: 'Te teletransportas\nhacia donde\napuntas' },
+  senuelo: { nombre: 'Señuelo', corto: 'Señuelo', texto: 'Un holograma atrae\na los zombies\nunos segundos' }
 };
 
 const EJECUTAR = {
@@ -57,6 +61,7 @@ const EJECUTAR = {
         angulo,
         scene.time.now
       );
+      bala.duenio = jugador;
     }
   },
 
@@ -67,6 +72,38 @@ const EJECUTAR = {
   congelar(scene, datos) {
     scene.congeladoHasta = scene.reloj + datos.duracionMs;
     scene.destello();
+  },
+
+  granada(scene, datos, jugador) {
+    const bala = scene.balas.getFirstDead(false);
+    if (!bala) return;
+    const angulo = jugador.rotation;
+    bala.disparar(
+      jugador.x + Math.cos(angulo) * BALA.distanciaCanon,
+      jugador.y + Math.sin(angulo) * BALA.distanciaCanon,
+      angulo,
+      scene.time.now,
+      datos.velocidad,
+      datos.alcanceMs
+    );
+    bala.danio = datos.danio;
+    bala.explosivo = datos.radio;
+    bala.duenio = jugador;
+  },
+
+  curacion(scene, datos, jugador) {
+    jugador.curar(datos.vidas);
+    jugador.armadura = Math.min(jugador.armaduraMaxima(), jugador.armadura + datos.armadura);
+    scene.mostrarOnda(jugador.x, jugador.y, datos.color, 90);
+    scene.actualizarVidas();
+  },
+
+  salto(scene, datos, jugador) {
+    scene.saltar(jugador, datos);
+  },
+
+  senuelo(scene, datos, jugador) {
+    scene.crearSenuelo(jugador, datos);
   }
 };
 
@@ -74,8 +111,9 @@ export default class GestorHabilidades {
   constructor(scene, jugador) {
     this.scene = scene;
     this.jugador = jugador;
-    this.ranuras = { E: HABILIDADES.inicial, Q: null, R: null };
-    this.listaEn = { E: 0, Q: 0, R: 0 };
+    this.ranuras = { E: HABILIDADES.inicial, Q: null, C: null };
+    this.listaEn = { E: 0, Q: 0, C: 0 };
+    this.duraciones = { E: 1, Q: 1, C: 1 };
   }
 
   desbloqueada(tecla) {
@@ -98,14 +136,16 @@ export default class GestorHabilidades {
   progreso(tecla, reloj) {
     const id = this.ranuras[tecla];
     if (!id) return 0;
-    return this.restante(tecla, reloj) / HABILIDADES.tipos[id].enfriamientoMs;
+    return this.restante(tecla, reloj) / this.duraciones[tecla];
   }
 
   usar(tecla, reloj) {
     const id = this.ranuras[tecla];
     if (!id || reloj < this.listaEn[tecla]) return false;
     const datos = HABILIDADES.tipos[id];
-    this.listaEn[tecla] = reloj + datos.enfriamientoMs;
+    const enfriamiento = datos.enfriamientoMs * this.jugador.multiplicadorEnfriamiento();
+    this.duraciones[tecla] = enfriamiento;
+    this.listaEn[tecla] = reloj + enfriamiento;
     EJECUTAR[id](this.scene, datos, this.jugador);
     return true;
   }
