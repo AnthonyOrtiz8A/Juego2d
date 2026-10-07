@@ -7,7 +7,7 @@ const TAMANO = 68;
 const POSICIONES = {
   E: { x: ANCHO - 115, y: ALTO - 225 },
   Q: { x: ANCHO - 225, y: ALTO - 95 },
-  R: { x: ANCHO - 220, y: ALTO - 210 }
+  C: { x: ANCHO - 220, y: ALTO - 210 }
 };
 
 export default class BotonesHabilidad {

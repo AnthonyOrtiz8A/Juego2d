@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ANCHO, ALTO, MUNDO, JUGADOR, BALA, BALA_ENEMIGA, ENEMIGOS, EFECTOS, TACTIL, HABILIDADES, RED, HISTORIA, COFRES, ARMAS, PASIVAS } from '../config.js';
+import { ANCHO, ALTO, MUNDO, JUGADOR, BALA, BALA_ENEMIGA, ENEMIGOS, EFECTOS, TACTIL, HABILIDADES, RED, HISTORIA, PASIVAS, ARMAS } from '../config.js';
 import Player from '../entities/Player.js';
 import Bullet from '../entities/Bullet.js';
 import Enemy from '../entities/Enemy.js';
@@ -11,11 +11,15 @@ import GestorHabilidades from '../systems/Habilidades.js';
 import BotonesHabilidad from '../systems/BotonesHabilidad.js';
 import SelectorHabilidades from '../systems/SelectorHabilidades.js';
 import SelectorRecompensa from '../systems/SelectorRecompensa.js';
-import { elegirTipoCofre, generarRecompensa, aplicarRecompensa, describirRecompensa, exportarEstado, importarEstado } from '../systems/Recompensas.js';
-import { asegurarMapa, nivelHistoria, tituloNivel } from '../systems/Mapas.js';
+import { exportarEstado, importarEstado } from '../systems/Recompensas.js';
+import { nivelHistoria, tituloNivel } from '../systems/Mapas.js';
+import Historia, { nombreArticulo } from '../systems/Historia.js';
+import HudArmas from '../systems/HudArmas.js';
+import Minimapa from '../systems/Minimapa.js';
+import BotonesAccion from '../systems/BotonesAccion.js';
 import { crearTexto, crearBoton, FUENTE } from '../systems/Interfaz.js';
 import { ESTUDIANTE } from '../systems/Dibujos.js';
-import { TIPOS_ENEMIGO, IDS_HABILIDAD, TECLAS_HABILIDAD, TIPOS_COFRE, IDS_ARMA, BANDERA_JUGADOR, BANDERA_ENEMIGO, EVENTO } from '../systems/Protocolo.js';
+import { TIPOS_ENEMIGO, IDS_HABILIDAD, TECLAS_HABILIDAD, IDS_ARMA, BANDERA_JUGADOR, BANDERA_ENEMIGO, EVENTO } from '../systems/Protocolo.js';
 
 const PROFUNDIDAD_HUD = 30;
 const PROFUNDIDAD_PAUSA = 50;
@@ -48,6 +52,7 @@ export default class GameScene extends Phaser.Scene {
     this.nivelIndice = Number.isInteger(entrada.nivel) ? entrada.nivel : 0;
     this.estadoInicial = entrada.estado || null;
     this.puntosIniciales = entrada.puntos || 0;
+    this.semilla = Number.isFinite(entrada.semilla) ? entrada.semilla : Math.floor(Math.random() * 1e9);
     this.sys.settings.data = {};
   }
 
@@ -60,8 +65,16 @@ export default class GameScene extends Phaser.Scene {
       this.modo = 'supervivencia';
     }
 
-    this.add.image(0, 0, asegurarMapa(this, this.nivelDatos ? this.nivelDatos.tema : null)).setOrigin(0);
-    this.physics.world.setBounds(MUNDO.borde, MUNDO.borde, MUNDO.ancho - MUNDO.borde * 2, MUNDO.alto - MUNDO.borde * 2);
+    this.historiaCtrl = null;
+    if (this.historia) {
+      this.historiaCtrl = new Historia(this, this.semilla, this.nivelDatos);
+      this.limitesMundo = this.historiaCtrl.limites();
+      this.physics.world.setBounds(0, 0, this.limitesMundo.ancho, this.limitesMundo.alto);
+    } else {
+      this.add.image(0, 0, 'ciudad').setOrigin(0);
+      this.limitesMundo = { ancho: MUNDO.ancho, alto: MUNDO.alto };
+      this.physics.world.setBounds(MUNDO.borde, MUNDO.borde, MUNDO.ancho - MUNDO.borde * 2, MUNDO.alto - MUNDO.borde * 2);
+    }
     this.puntoMundo = new Phaser.Math.Vector2();
     this.vista = new Phaser.Geom.Rectangle(0, 0, ANCHO, ALTO);
 
@@ -77,23 +90,20 @@ export default class GameScene extends Phaser.Scene {
     this.secuencia = 0;
     this.textoEquipoPrevio = '';
     this.jefe = null;
-    this.faseCofres = false;
-    this.cofres = [];
-    this.ofertas = new Map();
-    this.esperandoSiguiente = false;
+    this.oleadas = null;
 
     this.balas = this.crearPool(Bullet, BALA.poolMax);
     this.balasEnemigas = this.crearPool(Bullet, BALA_ENEMIGA.poolMax, 'bala-enemiga');
     this.enemigos = this.crearPool(Enemy, ENEMIGOS.poolMax);
     this.jugadores = this.crearJugadores();
     this.jugador = this.jugadores.find((jugador) => jugador.local);
-    this.cameras.main.setBounds(0, 0, MUNDO.ancho, MUNDO.alto);
+    this.cameras.main.setBounds(0, 0, this.limitesMundo.ancho, this.limitesMundo.alto);
     this.seguir(this.jugador);
 
     const cantidad = this.jugadores.length;
     const multiplicadorMundo = this.historia ? HISTORIA.multVidaPorMundo[this.nivelDatos.mundo - 1] : 1;
     this.multiplicadorVida = multiplicadorMundo * (1 + (cantidad - 1) * HISTORIA.multVidaPorJugador);
-    const multiplicadorCantidad = 1 + (cantidad - 1) * HISTORIA.multCantidadPorJugador;
+    this.multiplicadorCantidad = 1 + (cantidad - 1) * HISTORIA.multCantidadPorJugador;
 
     this.explosion = this.add.particles(0, 0, 'particula', {
       speed: { min: 60, max: 200 },
@@ -103,18 +113,25 @@ export default class GameScene extends Phaser.Scene {
       maxAliveParticles: EFECTOS.particulasMax
     }).setDepth(8);
     this.onda = this.add.image(0, 0, 'onda').setDepth(9).setVisible(false);
-    this.graficoCofres = this.add.graphics().setDepth(5);
 
     this.physics.add.overlap(this.balas, this.enemigos, this.alImpactar, null, this);
     this.jugadores.forEach((jugador) => {
       this.physics.add.overlap(jugador, this.enemigos, this.alChocar, null, this);
       this.physics.add.overlap(jugador, this.balasEnemigas, this.alRecibirDisparo, null, this);
     });
+    if (this.historiaCtrl) {
+      this.historiaCtrl.prepararJugadores(this.jugadores);
+      this.historiaCtrl.agregarColisiones(this.jugadores);
+    }
 
     this.teclas = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT,SPACE');
     this.input.keyboard.on('keydown-P', this.alternarPausa, this);
     this.input.keyboard.on('keydown-ESC', this.alternarPausa, this);
     TECLAS_HABILIDAD.forEach((tecla) => this.input.keyboard.on('keydown-' + tecla, () => this.usarHabilidad(tecla)));
+    this.input.keyboard.on('keydown-R', () => this.accion('recargar'));
+    this.input.keyboard.on('keydown-X', () => this.accion('cambiar'));
+    this.input.keyboard.on('keydown-F', () => this.accion('interactuar'));
+    this.input.on('wheel', () => this.accion('cambiar'));
 
     this.crearHud();
     this.controlesTactiles = new TouchControls(this);
@@ -124,6 +141,14 @@ export default class GameScene extends Phaser.Scene {
     this.mostrarBotonPausa(this.modoTactil);
     this.selector = new SelectorHabilidades(this, this.habilidades, () => this.terminarEleccion());
     this.selectorRecompensa = new SelectorRecompensa(this);
+    this.hudArmas = new HudArmas(this);
+    this.hudArmas.mostrar(this.historia);
+    this.botonesAccion = new BotonesAccion(this, (nombre) => this.accion(nombre));
+    this.botonesAccion.cambiarModo(this.modoTactil && this.historia);
+    this.minimapa = this.historiaCtrl ? new Minimapa(this, this.historiaCtrl.mazmorra) : null;
+    if (this.minimapa) this.textoEquipo.setY(this.minimapa.abajo + 10);
+    this.textoInteraccion = this.add.text(0, 0, '', { fontFamily: FUENTE, fontSize: '13px', fontStyle: 'bold', color: '#e8f070', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5).setDepth(20).setVisible(false);
+    this.textoAviso = crearTexto(this, ANCHO / 2, ALTO - 140, '', 16, '#ff8fa3').setOrigin(0.5).setDepth(PROFUNDIDAD_HUD).setAlpha(0);
     this.crearAnuncio();
     this.crearMenuPausa();
     this.actualizarVidas();
@@ -140,17 +165,12 @@ export default class GameScene extends Phaser.Scene {
     }
     this.events.once('shutdown', this.limpiar, this);
 
-    if (this.historia && !this.multijugador) {
-      Storage.guardarHistoria({ nivel: this.nivelIndice, estado: this.estadoInicial, puntos: this.puntosIniciales });
-    }
-
-    const opciones = { multiplicadorCantidad };
     if (this.historia) {
-      opciones.inicio = this.nivelDatos.inicio;
-      opciones.total = this.nivelDatos.oleadas;
-      opciones.jefe = this.nivelDatos.jefe || null;
+      this.textoOleada.setText('M' + this.nivelDatos.mundo + '-' + this.nivelDatos.numero + ' · ' + this.nivelDatos.nombre);
+      this.anunciar(tituloNivel(this.nivelDatos));
+      return;
     }
-    this.oleadas = new WaveManager(this, opciones);
+    this.oleadas = new WaveManager(this, { multiplicadorCantidad: this.multiplicadorCantidad });
     this.oleadas.iniciar();
   }
 
@@ -164,7 +184,7 @@ export default class GameScene extends Phaser.Scene {
       this.red.off('mensaje', this.alMensajeRed, this);
       this.red.off('salio', this.alSalirJugador, this);
     }
-    this.oleadas.detener();
+    if (this.oleadas) this.oleadas.detener();
   }
 
   crearPool(clase, maximo, textura) {
@@ -188,7 +208,7 @@ export default class GameScene extends Phaser.Scene {
       const x = MUNDO.ancho / 2 + Math.cos(angulo) * distancia;
       const y = MUNDO.alto / 2 + Math.sin(angulo) * distancia;
       const local = !this.multijugador || datos.id === this.red.miId;
-      const jugador = new Player(this, x, y, { id: datos.id, nombre: datos.nombre, local, indice: i });
+      const jugador = new Player(this, x, y, { id: datos.id, nombre: datos.nombre, local, indice: i, municionInfinita: !this.historia });
       jugador.habilidades = new GestorHabilidades(this, jugador);
       jugador.entrada.x = null;
       jugador.entrada.y = null;
@@ -249,7 +269,6 @@ export default class GameScene extends Phaser.Scene {
     this.textoRecord = crearTexto(this, 16, 38, 'Récord: ' + this.record, 14, '#fff27a').setDepth(PROFUNDIDAD_HUD);
     this.textoOleada = crearTexto(this, ANCHO / 2, 10, '', 22).setOrigin(0.5, 0).setDepth(PROFUNDIDAD_HUD);
     this.textoEquipo = crearTexto(this, ANCHO - 16, 10, '', 14).setOrigin(1, 0).setDepth(PROFUNDIDAD_HUD).setAlign('right');
-    this.textoArma = crearTexto(this, 16, 92, '', 14, '#d9a03a').setDepth(PROFUNDIDAD_HUD);
 
     this.iconosVida = [];
     const maximo = JUGADOR.vidas + PASIVAS.vitalidad.maximo;
@@ -270,11 +289,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   actualizarArma() {
-    if (!this.historia) {
-      this.textoArma.setVisible(false);
-      return;
-    }
-    this.textoArma.setText('Arma: ' + ARMAS[this.jugador.arma].nombre);
+    this.actualizarHudArmas();
   }
 
   actualizarBarraJefe() {
@@ -310,6 +325,7 @@ export default class GameScene extends Phaser.Scene {
     if (this.controlesTactiles.activo === this.modoTactil) return;
     this.modoTactil = this.controlesTactiles.activo;
     this.botonesHabilidad.cambiarModo(this.modoTactil);
+    this.botonesAccion.cambiarModo(this.modoTactil && this.historia);
     this.mostrarBotonPausa(this.modoTactil);
   }
 
@@ -431,10 +447,28 @@ export default class GameScene extends Phaser.Scene {
     return 'M' + this.nivelDatos.mundo + '-' + this.nivelDatos.numero + ' · Oleada ' + numero + '/' + total;
   }
 
+  actualizarHudArmas() {
+    if (!this.historia) return;
+    this.hudArmas.actualizar(this.jugador.armas, this.jugador.armaActual, this.jugador.progresoRecarga(this.reloj), this.jugador.dedos);
+  }
+
+  actualizarInteraccion() {
+    const objetivo = this.jugador.vivo ? this.historiaCtrl.interactuable(this.jugador) : null;
+    this.botonesAccion.fijarInteraccion(Boolean(objetivo));
+    if (!objetivo) {
+      this.textoInteraccion.setVisible(false);
+      return;
+    }
+    const objeto = objetivo.objeto;
+    const texto = objetivo.tipo === 'suelo'
+      ? 'F: Tomar ' + ARMAS[objeto.arma].nombre
+      : 'F: Comprar ' + nombreArticulo(objeto.tipo, objeto.item) + ' (' + objeto.precio + ' dedos)';
+    this.textoInteraccion.setText(texto).setPosition(objeto.x, objeto.y - 40).setVisible(true);
+  }
+
   alIniciarOleada(numero, total) {
     this.textoOleada.setText(this.textoOleadaActual(numero, total));
-    if (this.historia && numero === 1) this.anunciar(tituloNivel(this.nivelDatos));
-    else this.anunciar(this.historia ? 'Oleada ' + numero + ' de ' + total : 'Oleada ' + numero);
+    this.anunciar(this.historia ? '¡Zombies! Oleada ' + numero + ' de ' + total : 'Oleada ' + numero);
     this.sonar('oleada');
     if (this.multijugador && numero > 1) this.revivirCaidos();
   }
@@ -481,108 +515,60 @@ export default class GameScene extends Phaser.Scene {
   }
 
   alCompletarNivel() {
-    if (this.terminado) return;
-    if (this.nivelIndice >= HISTORIA.niveles.length - 1) {
+    if (this.terminado || !this.historiaCtrl) return;
+    const sala = this.historiaCtrl.salaActiva;
+    if (sala && sala.tipo === 'jefe' && this.nivelIndice >= HISTORIA.niveles.length - 1) {
+      this.historiaCtrl.salaActiva = null;
+      this.oleadas.detener();
+      this.oleadas = null;
       this.anunciar('¡La ciudad quedó atrás!');
       this.time.delayedCall(ESPERA_VICTORIA_MS, () => this.terminarPartida(true));
       return;
     }
-    this.anunciar('¡Nivel completado!');
-    if (this.multijugador) this.revivirCaidos();
-    this.jugadores.forEach((jugador) => {
-      if (jugador.vivo && jugador.pasivas.regeneracion > 0) jugador.curar(jugador.pasivas.regeneracion);
-    });
+    this.historiaCtrl.limpiarSala();
+    this.textoOleada.setText(this.etiquetaNivel());
+  }
+
+  etiquetaNivel() {
+    return 'M' + this.nivelDatos.mundo + '-' + this.nivelDatos.numero + ' · ' + this.nivelDatos.nombre;
+  }
+
+  accion(nombre, jugador = this.jugador) {
+    if (this.pausado || this.terminado || this.eligiendo || !jugador.vivo || !this.historia) return;
+    if (nombre === 'recargar') jugador.iniciarRecarga(this.reloj);
+    else if (nombre === 'cambiar') jugador.cambiarArma();
+    else if (nombre === 'interactuar') this.historiaCtrl.interactuar(jugador);
+    else return;
+    this.alCambiarEquipo(jugador);
+  }
+
+  alCambiarEquipo(jugador) {
+    if (!jugador.local) return;
+    this.botonesHabilidad.refrescar();
     this.actualizarVidas();
-    this.crearCofres();
+    this.actualizarArma();
   }
 
-  crearCofres() {
-    const activos = this.jugadores.filter((jugador) => !jugador.desconectado);
-    const vivos = activos.filter((jugador) => jugador.vivo);
-    const referencia = vivos.length > 0 ? vivos : activos;
-    let cx = 0;
-    let cy = 0;
-    referencia.forEach((jugador) => {
-      cx += jugador.x;
-      cy += jugador.y;
-    });
-    const margen = MUNDO.borde + 140;
-    cx = Phaser.Math.Clamp(cx / referencia.length, margen, MUNDO.ancho - margen);
-    cy = Phaser.Math.Clamp(cy / referencia.length, margen, MUNDO.alto - margen);
-
-    const cantidad = activos.length + COFRES.extra;
-    const radio = COFRES.separacion * Math.max(1, cantidad / 4);
-    for (let i = 0; i < cantidad; i++) {
-      const angulo = (i / cantidad) * Math.PI * 2 - Math.PI / 2;
-      const x = cx + Math.cos(angulo) * radio;
-      const y = cy + Math.sin(angulo) * radio;
-      const tipo = elegirTipoCofre();
-      const sprite = this.add.image(x, y, 'cofre-' + tipo).setDepth(4);
-      this.tweens.add({ targets: sprite, y: y - 5, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-      this.cofres.push({ id: i, tipo, x, y, sprite, abierto: false, resuelto: false, progreso: 0, recompensa: null });
-    }
-    this.faseCofres = true;
-    this.time.delayedCall(ESPERA_AVISO_HABILIDAD_MS, () => this.anunciar('¡Abre los cofres!'));
-  }
-
-  actualizarCofres(delta) {
-    if (!this.faseCofres) return;
-    const g = this.graficoCofres;
-    g.clear();
-    const radio2 = COFRES.radioApertura * COFRES.radioApertura;
-    this.cofres.forEach((cofre) => {
-      if (cofre.abierto) return;
-      const abridor = this.jugadores.find((jugador) => {
-        if (!jugador.vivo || this.ofertas.has(jugador.id)) return false;
-        const dx = jugador.x - cofre.x;
-        const dy = jugador.y - cofre.y;
-        return dx * dx + dy * dy <= radio2;
-      });
-      cofre.progreso = abridor ? cofre.progreso + delta : Math.max(0, cofre.progreso - delta);
-      if (cofre.progreso > 0) {
-        g.lineStyle(4, COFRES.tipos[cofre.tipo].color, 1);
-        g.beginPath();
-        g.arc(cofre.x, cofre.y, 32, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * cofre.progreso) / COFRES.aperturaMs, false);
-        g.strokePath();
-      }
-      if (abridor && cofre.progreso >= COFRES.aperturaMs) this.abrirCofre(cofre, abridor);
-    });
-
-    if (!this.esperandoSiguiente && this.cofres.every((cofre) => cofre.resuelto)) {
-      this.esperandoSiguiente = true;
-      this.anunciar('Avanzando por la ciudad…');
-      this.time.delayedCall(COFRES.esperaSiguienteMs, () => this.avanzarNivel());
-    }
-  }
-
-  abrirCofre(cofre, jugador) {
-    cofre.abierto = true;
-    cofre.progreso = 0;
-    this.tweens.killTweensOf(cofre.sprite);
-    cofre.sprite.setTexture('cofre-' + cofre.tipo + '-abierto').setY(cofre.y);
-    this.explotar(cofre.x, cofre.y, COFRES.tipos[cofre.tipo].color);
-    this.sonar('habilidad', jugador);
-    cofre.recompensa = generarRecompensa(cofre.tipo, jugador);
-    this.ofertas.set(jugador.id, cofre);
-    const actual = { arma: jugador.arma, ranuras: { ...jugador.habilidades.ranuras } };
-    if (jugador.local) this.selectorRecompensa.mostrar(cofre.recompensa, actual, (decision) => this.resolverCofre(jugador, decision));
-    else this.red.enviar(jugador.id, { t: 'cofre', c: cofre.id, r: cofre.recompensa, actual });
-  }
-
-  resolverCofre(jugador, decision) {
-    const cofre = this.ofertas.get(jugador.id);
-    if (!cofre) return;
-    this.ofertas.delete(jugador.id);
-    aplicarRecompensa(jugador, cofre.recompensa, decision);
-    cofre.resuelto = true;
+  avisar(jugador, texto) {
     if (jugador.local) {
-      this.botonesHabilidad.refrescar();
-      this.actualizarVidas();
-      this.actualizarArma();
+      this.mostrarAviso(texto);
+      return;
     }
-    if (this.multijugador && decision && decision.tomar) {
-      this.anunciar(jugador.nombre + ': ' + describirRecompensa(cofre.recompensa).nombre);
-    }
+    if (this.multijugador) this.eventosRed.push([EVENTO.aviso, jugador.id, texto]);
+  }
+
+  mostrarAviso(texto) {
+    this.tweens.killTweensOf(this.textoAviso);
+    this.textoAviso.setText(texto).setAlpha(1);
+    this.tweens.add({ targets: this.textoAviso, alpha: 0, delay: 1200, duration: 400 });
+  }
+
+  teletransportar(jugador, x, y) {
+    jugador.setPosition(x, y);
+    jugador.body.reset(x, y);
+    jugador.teletransportes += 1;
+    jugador.entrada.x = null;
+    jugador.entrada.y = null;
   }
 
   avanzarNivel() {
@@ -590,10 +576,13 @@ export default class GameScene extends Phaser.Scene {
     const siguiente = this.nivelIndice + 1;
     const estado = {};
     this.jugadores.forEach((jugador) => {
-      if (!jugador.desconectado) estado[jugador.id] = exportarEstado(jugador);
+      if (jugador.desconectado) return;
+      if (jugador.vivo && jugador.pasivas.regeneracion > 0) jugador.curar(jugador.pasivas.regeneracion);
+      estado[jugador.id] = exportarEstado(jugador);
     });
-    if (this.multijugador) this.red.cambiarNivel(siguiente);
-    this.scene.restart({ red: this.red, modo: 'historia', nivel: siguiente, estado, puntos: this.puntos });
+    const semilla = Math.floor(Math.random() * 1e9);
+    if (this.multijugador) this.red.cambiarNivel(siguiente, semilla);
+    this.scene.restart({ red: this.red, modo: 'historia', nivel: siguiente, estado, puntos: this.puntos, semilla });
   }
 
   anunciar(texto) {
@@ -636,7 +625,8 @@ export default class GameScene extends Phaser.Scene {
     const enemigo = this.enemigos.getFirstDead(false);
     if (!enemigo) return false;
     const objetivo = this.objetivoAleatorio();
-    const posicion = this.posicionBorde(objetivo);
+    const posicion = this.historiaCtrl ? this.historiaCtrl.posicionAparicion() : this.posicionBorde(objetivo);
+    if (!posicion) return false;
     enemigo.aparecer(tipo, posicion.x, posicion.y, multiplicadorVelocidad, objetivo, this.multiplicadorVida);
     return true;
   }
@@ -645,8 +635,18 @@ export default class GameScene extends Phaser.Scene {
     const enemigo = this.enemigos.getFirstDead(false);
     if (!enemigo) return;
     const objetivo = this.objetivoAleatorio();
-    const vista = this.vistaDe(objetivo);
-    enemigo.aparecer(tipo, vista.centerX, vista.y - ENEMIGOS.margenAparicion, 1, objetivo, this.multiplicadorVida);
+    let x;
+    let y;
+    if (this.historiaCtrl && this.historiaCtrl.salaActiva) {
+      const area = this.historiaCtrl.rectanguloActivo();
+      x = area.centerX;
+      y = area.y + 70;
+    } else {
+      const vista = this.vistaDe(objetivo);
+      x = vista.centerX;
+      y = vista.y - ENEMIGOS.margenAparicion;
+    }
+    enemigo.aparecer(tipo, x, y, 1, objetivo, this.multiplicadorVida);
     this.jefe = enemigo;
     this.textoJefe.setText(ENEMIGOS.tipos[tipo].nombre);
     this.anunciar('¡' + ENEMIGOS.tipos[tipo].nombre + '!');
@@ -660,7 +660,15 @@ export default class GameScene extends Phaser.Scene {
       if (!enemigo) return;
       const angulo = (i / cantidad) * Math.PI * 2;
       const objetivo = this.jugadorMasCercano(x, y) || this.jugador;
-      enemigo.aparecer(Math.random() < 0.5 ? 'normal' : 'rapido', x + Math.cos(angulo) * 90, y + Math.sin(angulo) * 90, this.oleadas.multiplicadorVelocidad, objetivo, this.multiplicadorVida);
+      let px = x + Math.cos(angulo) * 90;
+      let py = y + Math.sin(angulo) * 90;
+      if (this.historiaCtrl && this.historiaCtrl.salaActiva) {
+        const area = this.historiaCtrl.rectanguloActivo();
+        px = Phaser.Math.Clamp(px, area.x, area.right);
+        py = Phaser.Math.Clamp(py, area.y, area.bottom);
+      }
+      const multiplicador = this.oleadas ? this.oleadas.multiplicadorVelocidad : 1;
+      enemigo.aparecer(Math.random() < 0.5 ? 'normal' : 'rapido', px, py, multiplicador, objetivo, this.multiplicadorVida);
     }
   }
 
@@ -677,8 +685,37 @@ export default class GameScene extends Phaser.Scene {
     if (this.multijugador) this.eventosRed.push([EVENTO.explosion, redondear(x), redondear(y), color]);
   }
 
+  impactarPared(bala) {
+    if (!bala.active) return;
+    if (bala.explosivo) this.detonar(bala);
+    else bala.desactivar();
+  }
+
+  detonar(bala) {
+    const { x, y, explosivo: radio, danio, duenio } = bala;
+    bala.desactivar();
+    this.mostrarOnda(x, y, 0xff7a1a, radio);
+    this.explotar(x, y, 0xff7a1a);
+    this.sonar('explosion');
+    const radio2 = radio * radio;
+    this.enemigos.getChildren().forEach((enemigo) => {
+      if (!enemigo.active) return;
+      const dx = enemigo.x - x;
+      const dy = enemigo.y - y;
+      if (dx * dx + dy * dy > radio2) return;
+      if (!enemigo.recibirDanio(danio, this.time.now)) return;
+      this.sumarPuntos(enemigo.datos.puntos);
+      if (duenio) duenio.registrarBaja();
+      this.eliminarEnemigo(enemigo);
+    });
+  }
+
   alImpactar(bala, enemigo) {
     if (!bala.active || !enemigo.active || bala.ultimoGolpe === enemigo) return;
+    if (bala.explosivo) {
+      this.detonar(bala);
+      return;
+    }
     bala.ultimoGolpe = enemigo;
     if (bala.perforacion > 0) bala.perforacion -= 1;
     else bala.desactivar();
@@ -727,7 +764,7 @@ export default class GameScene extends Phaser.Scene {
     jugador.caer();
     jugador.escudoImagen.setVisible(false);
     if (jugador === this.jugador) this.actualizarVidas();
-    if (this.ofertas.has(jugador.id)) this.resolverCofre(jugador, { tomar: false });
+    if (this.historiaCtrl) this.historiaCtrl.cancelarOferta(jugador);
     if (this.multijugador && this.jugadores.some((otro) => otro.vivo)) {
       this.anunciar(jugador.nombre + ' cayó');
       if (jugador === this.jugador) this.seguir(this.jugadores.find((otro) => otro.vivo));
@@ -744,23 +781,23 @@ export default class GameScene extends Phaser.Scene {
       this.cameras.main.shake(500, 0.01);
     }
     if (enemigo === this.jefe) this.jefe = null;
+    if (this.historiaCtrl) this.historiaCtrl.soltarDedos(enemigo);
     enemigo.desactivar();
-    if (!this.terminado) this.oleadas.verificarFin();
+    if (!this.terminado && this.oleadas) this.oleadas.verificarFin();
   }
 
   terminarPartida(victoria) {
     if (this.terminado) return;
     this.terminado = true;
-    this.oleadas.detener();
+    if (this.oleadas) this.oleadas.detener();
     this.physics.pause();
     this.selectorRecompensa.cerrar();
     this.botonesHabilidad.mostrar(false);
     this.botonPausa.input.enabled = false;
     const nuevoRecord = Storage.guardarRecord(this.puntos);
-    if (victoria && !this.multijugador) Storage.borrarHistoria();
     const resultado = {
       puntos: this.puntos,
-      oleada: this.oleadas.oleada,
+      oleada: this.oleadas ? this.oleadas.oleada : 0,
       modo: this.modo,
       nivel: this.nivelIndice,
       victoria: Boolean(victoria)
@@ -774,9 +811,7 @@ export default class GameScene extends Phaser.Scene {
         ...resultado,
         record: Storage.obtenerRecord(),
         nuevoRecord,
-        red: this.red,
-        estado: this.estadoInicial,
-        puntosNivel: this.puntosIniciales
+        red: this.red
       });
     });
   }
@@ -793,7 +828,11 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
     if (datos.t === 'eleccion') {
-      this.resolverCofre(jugador, { tomar: Boolean(datos.tomar), ranura: datos.ranura });
+      if (this.historiaCtrl) this.historiaCtrl.resolverOferta(jugador, { tomar: Boolean(datos.tomar), ranura: datos.ranura });
+      return;
+    }
+    if (datos.t === 'accion') {
+      if (['recargar', 'cambiar', 'interactuar'].includes(datos.a)) this.accion(datos.a, jugador);
       return;
     }
     if (datos.t !== 'i' || !Number.isFinite(datos.n) || datos.n <= jugador.ultimaEntrada) return;
@@ -816,7 +855,7 @@ export default class GameScene extends Phaser.Scene {
     jugador.desconectado = true;
     jugador.escudoImagen.setVisible(false);
     if (jugador.vivo) jugador.caer();
-    if (this.ofertas.has(jugador.id)) this.resolverCofre(jugador, { tomar: false });
+    if (this.historiaCtrl) this.historiaCtrl.cancelarOferta(jugador);
     this.anunciar(jugador.nombre + ' salió');
     if (!this.jugadores.some((otro) => otro.vivo)) this.terminarPartida(false);
   }
@@ -842,6 +881,10 @@ export default class GameScene extends Phaser.Scene {
       m: jugador.mejoras,
       vm: jugador.velocidadMovimiento(),
       tp: jugador.teletransportes,
+      dedos: jugador.dedos,
+      armas: jugador.armas.map((ranura) => (ranura ? [IDS_ARMA.indexOf(ranura.id), ranura.balas] : null)),
+      aa: jugador.armaActual,
+      rc: redondear(jugador.progresoRecarga(this.reloj) * 1000),
       x: redondear(jugador.x),
       y: redondear(jugador.y)
     };
@@ -851,9 +894,6 @@ export default class GameScene extends Phaser.Scene {
     const ahora = this.time.now;
     this.secuencia += 1;
     const jugadores = this.jugadores.map((jugador) => this.estadoJugadorRed(jugador, ahora));
-    const cofres = this.faseCofres
-      ? this.cofres.map((cofre) => [cofre.id, TIPOS_COFRE.indexOf(cofre.tipo), redondear(cofre.x), redondear(cofre.y), cofre.abierto ? 1 : 0, Math.min(100, redondear((cofre.progreso / COFRES.aperturaMs) * 100))])
-      : null;
     const jefe = this.jefe && this.jefe.active ? [TIPOS_ENEMIGO.indexOf(this.jefe.tipo), redondear((this.jefe.vida / this.jefe.vidaMaxima) * 1000)] : null;
     const eventos = this.eventosRed;
     this.eventosRed = [];
@@ -861,18 +901,19 @@ export default class GameScene extends Phaser.Scene {
     this.jugadores.forEach((jugador) => {
       if (jugador.local || jugador.desconectado) return;
       const centro = jugador.vivo ? jugador : this.jugadores.find((otro) => otro.vivo) || jugador;
+      const historia = this.historiaCtrl ? this.historiaCtrl.datosRed((x, y) => this.cerca(centro, x, y)) : {};
       this.red.enviarRapido(jugador.id, {
+        ...historia,
         t: 's',
         n: this.secuencia,
         j: jugadores,
         e: this.empaquetarEnemigos(centro),
         b: this.empaquetarBalas(this.balas, centro, true),
         a: this.empaquetarBalas(this.balasEnemigas, centro, false),
-        c: cofres,
         jf: jefe,
         p: this.puntos,
-        o: this.oleadas.numeroEnNivel,
-        ot: Number.isFinite(this.oleadas.total) ? this.oleadas.total : 0,
+        o: this.oleadas ? this.oleadas.numeroEnNivel : 0,
+        ot: this.oleadas && Number.isFinite(this.oleadas.total) ? this.oleadas.total : 0,
         ev: eventos,
         yo: this.datosPersonales(jugador)
       });
@@ -912,6 +953,7 @@ export default class GameScene extends Phaser.Scene {
 
   disparar(jugador, tiempo) {
     const arma = jugador.datosArma();
+    if (!jugador.tieneMunicion(this.reloj)) return;
     if (!jugador.puedeDisparar(tiempo, arma.cadenciaMs)) return;
     const x = jugador.x + Math.cos(jugador.rotation) * BALA.distanciaCanon;
     const y = jugador.y + Math.sin(jugador.rotation) * BALA.distanciaCanon;
@@ -924,8 +966,10 @@ export default class GameScene extends Phaser.Scene {
       bala.disparar(x, y, jugador.rotation + desvio, tiempo, arma.velocidad, arma.vidaMs);
       bala.danio = arma.danio;
       bala.perforacion = arma.perforacion;
+      bala.explosivo = arma.explosivo;
       bala.duenio = jugador;
     }
+    jugador.gastarBala(this.reloj);
     if (jugador.local) Sonido.disparo();
   }
 
@@ -1001,10 +1045,17 @@ export default class GameScene extends Phaser.Scene {
         else this.controlarRemoto(jugador, time, delta);
       }
       jugador.actualizarEfectos(this.reloj);
+      jugador.actualizarRecarga(this.reloj);
       jugador.escudoImagen.setVisible(jugador.vivo && jugador.tieneEscudo(this.reloj)).setPosition(jugador.x, jugador.y);
     }
 
-    this.actualizarCofres(delta);
+    if (this.historiaCtrl) {
+      this.historiaCtrl.actualizar(delta);
+      this.actualizarInteraccion();
+      const vivos = this.jugadores.filter((jugador) => jugador.vivo);
+      this.minimapa.actualizar(time, vivos, this.jugador, this.historiaCtrl.salaActiva ? this.historiaCtrl.salaActiva.id : -1);
+    }
+    this.actualizarHudArmas();
     this.actualizarBarraJefe();
     this.botonesHabilidad.actualizar(this.reloj);
     this.actualizarEquipo();

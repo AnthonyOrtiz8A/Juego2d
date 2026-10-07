@@ -14,7 +14,10 @@ export function estadisticasArma(armaId, mejoras) {
     dispersion: arma.dispersion + (arma.dispersion === 0 && nivel('canon') > 0 ? 0.12 : 0),
     velocidad: arma.velocidad,
     vidaMs: arma.vidaMs * (1 + nivel('alcance') * MEJORAS.alcance.valor),
-    perforacion: arma.perforacion + nivel('calibre') * MEJORAS.calibre.valor
+    perforacion: arma.perforacion + nivel('calibre') * MEJORAS.calibre.valor,
+    cargador: arma.cargador,
+    recargaMs: arma.recargaMs,
+    explosivo: arma.explosivo || 0
   };
 }
 
@@ -30,7 +33,7 @@ export function elegirTipoCofre() {
 
 export function generarRecompensa(tipo, jugador) {
   if (tipo === 'arma') {
-    return { tipo, id: Phaser.Utils.Array.GetRandom(Object.keys(ARMAS).filter((id) => id !== jugador.arma)) };
+    return { tipo, id: Phaser.Utils.Array.GetRandom(Object.keys(ARMAS).filter((id) => !jugador.tieneArma(id))) };
   }
   if (tipo === 'activa') {
     const equipadas = Object.values(jugador.habilidades.ranuras).filter((id) => id !== null);
@@ -72,7 +75,7 @@ export function aplicarRecompensa(jugador, recompensa, decision) {
   if (recompensa.tipo === 'arma') {
     jugador.arma = recompensa.id;
   } else if (recompensa.tipo === 'activa') {
-    if (['E', 'Q', 'R'].includes(decision.ranura)) jugador.habilidades.asignar(decision.ranura, recompensa.id);
+    if (['E', 'Q', 'C'].includes(decision.ranura)) jugador.habilidades.asignar(decision.ranura, recompensa.id);
   } else if (recompensa.tipo === 'pasiva') {
     jugador.pasivas[recompensa.id] = (jugador.pasivas[recompensa.id] || 0) + 1;
     if (recompensa.id === 'vitalidad') jugador.curar(1);
@@ -83,7 +86,9 @@ export function aplicarRecompensa(jugador, recompensa, decision) {
 
 export function exportarEstado(jugador) {
   return {
-    arma: jugador.arma,
+    armas: jugador.armas.map((ranura) => (ranura ? { ...ranura } : null)),
+    armaActual: jugador.armaActual,
+    dedos: jugador.dedos,
     mejoras: { ...jugador.mejoras },
     pasivas: { ...jugador.pasivas },
     ranuras: { ...jugador.habilidades.ranuras },
@@ -93,7 +98,16 @@ export function exportarEstado(jugador) {
 
 export function importarEstado(jugador, estado) {
   if (!estado) return;
-  if (ARMAS[estado.arma]) jugador.arma = estado.arma;
+  if (Array.isArray(estado.armas)) {
+    jugador.armas = [0, 1].map((i) => {
+      const ranura = estado.armas[i];
+      if (!ranura || !ARMAS[ranura.id]) return null;
+      return { id: ranura.id, balas: Math.min(ARMAS[ranura.id].cargador, Math.max(0, Number(ranura.balas) || 0)) };
+    });
+    if (!jugador.armas[0]) jugador.armas[0] = { id: 'pistola', balas: ARMAS.pistola.cargador };
+    jugador.armaActual = estado.armaActual === 1 && jugador.armas[1] ? 1 : 0;
+  }
+  jugador.dedos = Math.max(0, Number(estado.dedos) || 0);
   Object.keys(MEJORAS).forEach((id) => {
     jugador.mejoras[id] = Number(estado.mejoras && estado.mejoras[id]) || 0;
   });
@@ -101,7 +115,7 @@ export function importarEstado(jugador, estado) {
     jugador.pasivas[id] = Number(estado.pasivas && estado.pasivas[id]) || 0;
   });
   if (estado.ranuras) {
-    ['E', 'Q', 'R'].forEach((tecla) => {
+    ['E', 'Q', 'C'].forEach((tecla) => {
       const id = estado.ranuras[tecla];
       jugador.habilidades.ranuras[tecla] = HABILIDADES.tipos[id] ? id : null;
     });

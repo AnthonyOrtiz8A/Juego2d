@@ -192,8 +192,9 @@ export default class LobbyScene extends Phaser.Scene {
   }
 
   empezar() {
-    this.red.iniciarPartida(0);
-    this.scene.start('Game', { red: this.red, modo: this.red.modo, nivel: 0 });
+    const semilla = Math.floor(Math.random() * 1e9);
+    this.red.iniciarPartida(0, semilla);
+    this.scene.start('Game', { red: this.red, modo: this.red.modo, nivel: 0, semilla });
   }
 
   limpiar() {

@@ -789,3 +789,226 @@ export function dibujarCofre(g, tipo, abierto) {
     dibujarIconoCofre(g, tipo, w / 2, y + ch / 2 + 6, d.brillo);
   }
 }
+
+export const TAMANO_TILE = 32;
+
+export function temaCompleto(temaId) {
+  return { ...BASE_TEMA, ...(TEMAS[temaId] || {}) };
+}
+
+function oscurecer(color, factor) {
+  const r = Math.round(((color >> 16) & 255) * factor);
+  const v = Math.round(((color >> 8) & 255) * factor);
+  const a = Math.round((color & 255) * factor);
+  return (r << 16) | (v << 8) | a;
+}
+
+export function dibujarTileset(g, temaId) {
+  const t = temaCompleto(temaId);
+  const s = TAMANO_TILE;
+  const rng = new Phaser.Math.RandomDataGenerator(['tiles-' + temaId]);
+
+  g.fillStyle(oscurecer(t.techo, 0.2), 1);
+  g.fillRect(0, 0, s, s);
+  g.fillStyle(oscurecer(t.techo, 0.3), 1);
+  g.fillRect(4, 4, 6, 6);
+  g.fillRect(20, 18, 5, 5);
+
+  for (let i = 1; i <= 3; i++) {
+    const x = i * s;
+    g.fillStyle(t.suelo, 1);
+    g.fillRect(x, 0, s, s);
+    g.lineStyle(1, t.juntas, 1);
+    g.strokeRect(x + 0.5, 0.5, s - 1, s - 1);
+    g.lineBetween(x + s / 2, 0, x + s / 2, s);
+    if (i === 2) {
+      g.fillStyle(0x4f0909, 0.75);
+      g.fillCircle(x + 12, 14, 6);
+      g.fillCircle(x + 19, 19, 3);
+    }
+    if (i === 3) {
+      g.lineStyle(1.5, 0x141416, 0.9);
+      g.lineBetween(x + 4, 6, x + 14, 15);
+      g.lineBetween(x + 14, 15, x + 11, 26);
+      g.lineBetween(x + 14, 15, x + 26, 18);
+    }
+    for (let j = 0; j < 4; j++) {
+      g.fillStyle(t.juntas, 0.8);
+      g.fillRect(x + rng.between(2, s - 4), rng.between(2, s - 4), 2, 2);
+    }
+  }
+
+  const xp = 4 * s;
+  g.fillStyle(t.techo, 1);
+  g.fillRect(xp, 0, s, s);
+  g.fillStyle(t.techoDetalle, 1);
+  g.fillRect(xp, 0, s, 6);
+  g.lineStyle(1, oscurecer(t.techo, 0.6), 1);
+  g.strokeRect(xp + 0.5, 0.5, s - 1, s - 1);
+  g.lineBetween(xp, 16, xp + s, 16);
+  g.lineBetween(xp + 8, 6, xp + 8, 16);
+  g.lineBetween(xp + 24, 16, xp + 24, s);
+
+  const xd = 5 * s;
+  g.fillStyle(0x5a5f66, 1);
+  g.fillRect(xd, 0, s, s);
+  g.fillStyle(0x3a3e44, 1);
+  for (let y = 3; y < s; y += 6) g.fillRect(xd + 2, y, s - 4, 2);
+  g.fillStyle(0xc9a227, 1);
+  g.fillRect(xd, 0, s, 3);
+  g.fillRect(xd, s - 3, s, 3);
+  g.fillStyle(0xc0392b, 1);
+  g.fillCircle(xd + s / 2, s / 2, 3);
+
+  const xc = 6 * s;
+  g.fillStyle(t.asfalto, 1);
+  g.fillRect(xc, 0, s, s);
+  g.fillStyle(t.linea, 0.35);
+  g.fillRect(xc + 14, 4, 4, 10);
+  g.fillRect(xc + 14, 20, 4, 8);
+}
+
+export function dibujarDecoracion(g, tipo) {
+  if (tipo === 'auto') {
+    g.fillStyle(0x000000, 0.35);
+    g.fillRoundedRect(4, 6, 56, 28, 6);
+    g.fillStyle(0x2b2622, 1);
+    g.fillRoundedRect(2, 3, 56, 28, 6);
+    g.fillStyle(0x6e3b1f, 1);
+    g.fillRect(20, 7, 6, 20);
+    g.fillRect(38, 7, 8, 20);
+    g.fillStyle(0x6e3b1f, 0.8);
+    g.fillCircle(14, 18, 5);
+    return;
+  }
+  if (tipo === 'caja') {
+    g.fillStyle(0x000000, 0.3);
+    g.fillRect(4, 4, 26, 26);
+    g.fillStyle(0x8a6234, 1);
+    g.fillRect(2, 2, 26, 26);
+    g.lineStyle(2, 0x5a3d1e, 1);
+    g.strokeRect(3, 3, 24, 24);
+    g.lineBetween(3, 3, 27, 27);
+    g.lineBetween(27, 3, 3, 27);
+    return;
+  }
+  if (tipo === 'barril') {
+    g.fillStyle(0x2f5d3a, 1);
+    g.fillCircle(12, 12, 10);
+    g.lineStyle(1.5, 0x111111, 0.8);
+    g.strokeCircle(12, 12, 10);
+    g.strokeCircle(12, 12, 5);
+    return;
+  }
+  if (tipo === 'escombros') {
+    const colores = [0x55565c, 0x6b5a45, 0x3e3f44, 0x8c8c8c];
+    for (let i = 0; i < 9; i++) {
+      g.fillStyle(colores[i % colores.length], 1);
+      g.fillRect(3 + ((i * 7) % 26), 3 + ((i * 11) % 22), 4 + (i % 3), 3 + (i % 2));
+    }
+    return;
+  }
+  g.fillStyle(0x4f0909, 0.85);
+  g.fillCircle(16, 14, 9);
+  g.fillCircle(24, 18, 6);
+  g.fillCircle(10, 20, 5);
+  g.fillStyle(0x6b0f0f, 0.9);
+  g.fillCircle(30, 8, 2);
+  g.fillCircle(4, 6, 2);
+}
+
+export const DECORACIONES = ['auto', 'caja', 'barril', 'escombros', 'sangre'];
+export const TAMANO_DECORACION = { auto: [62, 36], caja: [32, 32], barril: [24, 24], escombros: [34, 30], sangre: [34, 30] };
+
+export function dibujarArma(g, armaId, color) {
+  const largos = { pistola: 18, revolver: 22, escopeta: 34, subfusil: 26, ametralladora: 38, rifle: 40, lanzagranadas: 32 };
+  const largo = largos[armaId] || 24;
+  const y = 10;
+  g.fillStyle(0x000000, 0.35);
+  g.fillRect(4, y + 2, largo, 7);
+  g.fillStyle(color, 1);
+  g.fillRect(2, y - 3, largo, 7);
+  g.fillStyle(0x1b1b1b, 1);
+  g.fillRect(2 + largo - 4, y - 2, 6, 4);
+  g.fillStyle(oscurecer(color, 0.6), 1);
+  g.fillRect(4, y + 3, 6, 8);
+  if (armaId === 'escopeta' || armaId === 'rifle' || armaId === 'ametralladora') {
+    g.fillRect(0, y - 2, 6, 9);
+  }
+  if (armaId === 'subfusil' || armaId === 'ametralladora') {
+    g.fillStyle(0x1b1b1b, 1);
+    g.fillRect(14, y + 3, 5, 9);
+  }
+  if (armaId === 'revolver') {
+    g.fillStyle(oscurecer(color, 0.7), 1);
+    g.fillCircle(10, y, 4);
+  }
+  if (armaId === 'lanzagranadas') {
+    g.fillStyle(0x1b1b1b, 1);
+    g.fillCircle(largo - 2, y, 5);
+  }
+  if (armaId === 'rifle') {
+    g.fillStyle(0x1b1b1b, 1);
+    g.fillRect(16, y - 7, 10, 3);
+  }
+}
+
+export function dibujarPortal(g) {
+  const c = 40;
+  for (let i = 6; i >= 1; i--) {
+    g.fillStyle(i % 2 === 0 ? 0x6b3dd9 : 0x3ee8ff, 0.12 + i * 0.05);
+    g.fillCircle(c, c, 6 + i * 5.5);
+  }
+  g.lineStyle(3, 0xb36bff, 1);
+  g.strokeCircle(c, c, 36);
+  g.lineStyle(2, 0x3ee8ff, 0.9);
+  for (let i = 0; i < 4; i++) {
+    const a = (Math.PI / 2) * i;
+    g.beginPath();
+    g.arc(c, c, 22, a, a + 1, false);
+    g.strokePath();
+  }
+  g.fillStyle(0xffffff, 0.9);
+  g.fillCircle(c, c, 4);
+}
+
+export function dibujarVendedor(g) {
+  const c = 22;
+  g.fillStyle(0x000000, 0.3);
+  g.fillEllipse(c + 2, c + 3, 24, 32);
+  g.fillStyle(0x6b4a2b, 1);
+  g.fillEllipse(c, c, 16, 28);
+  g.fillStyle(0xe8e0c8, 1);
+  g.fillRect(c + 2, c - 8, 6, 16);
+  g.fillStyle(0xd9a27a, 1);
+  g.fillCircle(c, c, 7);
+  g.fillStyle(0x3a2a1a, 1);
+  g.fillRect(c - 8, c - 9, 9, 18);
+  g.fillStyle(0xc9a227, 1);
+  g.fillRect(c + 4, c - 3, 4, 6);
+}
+
+export function dibujarPedestal(g) {
+  g.fillStyle(0x000000, 0.35);
+  g.fillRect(6, 10, 36, 32);
+  g.fillStyle(0x6e6a62, 1);
+  g.fillRect(4, 8, 36, 32);
+  g.fillStyle(0x8c877d, 1);
+  g.fillRect(4, 8, 36, 6);
+  g.lineStyle(1, 0x4a463f, 1);
+  g.strokeRect(4.5, 8.5, 35, 31);
+}
+
+export function dibujarDedo(g) {
+  g.fillStyle(0x000000, 0.3);
+  g.fillEllipse(10, 10, 18, 8);
+  g.fillStyle(0x9db58a, 1);
+  g.fillRoundedRect(1, 3, 16, 7, 3);
+  g.lineStyle(1, 0x5a7a4a, 1);
+  g.lineBetween(7, 3, 7, 10);
+  g.lineBetween(12, 3, 12, 10);
+  g.fillStyle(0xe8dcc0, 1);
+  g.fillRect(15, 4, 3, 5);
+  g.fillStyle(0x6b0f0f, 1);
+  g.fillCircle(2, 6, 2.5);
+}

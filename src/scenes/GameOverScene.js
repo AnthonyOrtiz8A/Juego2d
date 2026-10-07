@@ -19,8 +19,6 @@ export default class GameOverScene extends Phaser.Scene {
     this.modo = datos.modo || 'supervivencia';
     this.nivel = Number.isInteger(datos.nivel) ? datos.nivel : 0;
     this.victoria = Boolean(datos.victoria);
-    this.estado = datos.estado || null;
-    this.puntosNivel = datos.puntosNivel || 0;
     this.sys.settings.data = {};
     if (this.red && !this.red.esAnfitrion) {
       this.nuevoRecord = Storage.guardarRecord(this.puntos);
@@ -43,7 +41,7 @@ export default class GameOverScene extends Phaser.Scene {
     let detalle = 'Oleada alcanzada: ' + this.oleada;
     if (historia) {
       const nivel = nivelHistoria(this.nivel);
-      detalle = this.victoria ? 'Cruzaste toda la ciudad y venciste a la Abominación' : 'Caíste en ' + (nivel ? tituloNivel(nivel) : 'la ciudad');
+      detalle = this.victoria ? 'Cruzaste toda la ciudad y venciste a la Abominación' : 'Caíste en ' + (nivel ? tituloNivel(nivel) : 'la ciudad') + ' · la partida se perdió';
     }
     crearTexto(this, ANCHO / 2, 222, detalle, 18, '#9aa4c7').setOrigin(0.5);
     crearTexto(this, ANCHO / 2, 254, 'Récord: ' + this.record, 20, '#fff27a').setOrigin(0.5);
@@ -69,15 +67,16 @@ export default class GameOverScene extends Phaser.Scene {
     }
   }
 
-  datosReintento() {
-    return { red: this.red, modo: 'historia', nivel: this.nivel, estado: this.estado, puntos: this.puntosNivel };
+  nuevaHistoria() {
+    const semilla = Math.floor(Math.random() * 1e9);
+    if (this.red) this.red.cambiarNivel(0, semilla);
+    this.scene.start('Game', { red: this.red, modo: 'historia', nivel: 0, semilla });
   }
 
   botonesLocales(historia) {
     const menu = { texto: 'Menú principal', accion: () => this.scene.start('Menu') };
     if (!historia) return [{ texto: 'Reintentar', accion: () => this.scene.start('Game', {}) }, menu];
-    if (this.victoria) return [menu];
-    return [{ texto: 'Reintentar nivel', accion: () => this.scene.start('Game', this.datosReintento()) }, menu];
+    return [{ texto: 'Nueva partida', accion: () => this.nuevaHistoria() }, menu];
   }
 
   botonesRed(historia) {
@@ -90,15 +89,7 @@ export default class GameOverScene extends Phaser.Scene {
     };
     if (!this.red.esAnfitrion) return [salir];
     const botones = [];
-    if (historia && !this.victoria) {
-      botones.push({
-        texto: 'Reintentar nivel',
-        accion: () => {
-          this.red.cambiarNivel(this.nivel);
-          this.scene.start('Game', this.datosReintento());
-        }
-      });
-    }
+    if (historia) botones.push({ texto: 'Nueva partida', accion: () => this.nuevaHistoria() });
     botones.push({
       texto: 'Volver a la sala',
       accion: () => {

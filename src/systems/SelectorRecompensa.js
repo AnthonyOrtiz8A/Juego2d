@@ -1,4 +1,4 @@
-import { ANCHO, ALTO, ARMAS } from '../config.js';
+import { ANCHO, ALTO } from '../config.js';
 import { DESCRIPCIONES } from './Habilidades.js';
 import { describirRecompensa } from './Recompensas.js';
 import { crearTexto, crearBoton } from './Interfaz.js';
@@ -49,14 +49,8 @@ export default class SelectorRecompensa {
     this.agregar(crearTexto(scene, cx, arriba + 116, info.texto, 15, '#c9d1f0').setOrigin(0.5).setLineSpacing(4));
 
     const filaBotones = arriba + ALTO_PANEL - 90;
-    if (recompensa.tipo === 'arma') {
-      this.agregar(crearTexto(scene, cx, arriba + 172, 'Arma actual: ' + ARMAS[actual.arma].nombre, 14, '#9aa4c7').setOrigin(0.5));
-      this.boton(cx - 125, filaBotones + 22, 'Equipar', () => decidir({ tomar: true }), 230);
-      this.boton(cx + 125, filaBotones + 22, 'Conservar actual', () => decidir({ tomar: false }), 230);
-      return;
-    }
     if (recompensa.tipo === 'activa') {
-      const teclas = ['E', 'Q', 'R'];
+      const teclas = ['E', 'Q', 'C'];
       teclas.forEach((tecla, i) => {
         const id = actual.ranuras[tecla];
         const texto = tecla + ': ' + (id ? DESCRIPCIONES[id].corto : 'vacía');

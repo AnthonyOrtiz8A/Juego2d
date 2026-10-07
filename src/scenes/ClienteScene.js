@@ -1,13 +1,17 @@
 import Phaser from 'phaser';
-import { ANCHO, ALTO, MUNDO, JUGADOR, BALA, EFECTOS, TACTIL, HABILIDADES, RED, ARMAS, ENEMIGOS, COFRES, PASIVAS } from '../config.js';
+import { ANCHO, ALTO, MUNDO, JUGADOR, BALA, EFECTOS, TACTIL, HABILIDADES, RED, ARMAS, ENEMIGOS, PASIVAS } from '../config.js';
 import Sonido from '../systems/Sonido.js';
 import TouchControls from '../systems/TouchControls.js';
 import BotonesHabilidad from '../systems/BotonesHabilidad.js';
 import SelectorRecompensa from '../systems/SelectorRecompensa.js';
 import { estadisticasArma, recompensaValida } from '../systems/Recompensas.js';
-import { asegurarMapa, nivelHistoria } from '../systems/Mapas.js';
+import { nivelHistoria } from '../systems/Mapas.js';
+import VistaHistoria from '../systems/VistaHistoria.js';
+import HudArmas from '../systems/HudArmas.js';
+import Minimapa from '../systems/Minimapa.js';
+import BotonesAccion from '../systems/BotonesAccion.js';
 import { crearTexto, FUENTE } from '../systems/Interfaz.js';
-import { TIPOS_ENEMIGO, IDS_HABILIDAD, TECLAS_HABILIDAD, TIPOS_COFRE, IDS_ARMA, BANDERA_JUGADOR, BANDERA_ENEMIGO, EVENTO } from '../systems/Protocolo.js';
+import { TIPOS_ENEMIGO, IDS_HABILIDAD, TECLAS_HABILIDAD, IDS_ARMA, BANDERA_JUGADOR, BANDERA_ENEMIGO, EVENTO } from '../systems/Protocolo.js';
 
 const PROFUNDIDAD_HUD = 30;
 const SONIDOS_PERMITIDOS = ['explosion', 'danio', 'habilidad', 'oleada'];
@@ -16,9 +20,9 @@ const RADIO_CHOQUE_BALA = 6;
 
 class GestorRemoto {
   constructor() {
-    this.ranuras = { E: null, Q: null, R: null };
-    this.restantes = { E: 0, Q: 0, R: 0 };
-    this.duraciones = { E: 1, Q: 1, R: 1 };
+    this.ranuras = { E: null, Q: null, C: null };
+    this.restantes = { E: 0, Q: 0, C: 0 };
+    this.duraciones = { E: 1, Q: 1, C: 1 };
     this.base = 0;
   }
 
@@ -75,13 +79,23 @@ export default class ClienteScene extends Phaser.Scene {
     this.red = datos.red;
     this.modo = datos.modo || 'supervivencia';
     this.nivelIndice = Number.isInteger(datos.nivel) ? datos.nivel : 0;
+    this.semilla = Number.isFinite(datos.semilla) ? datos.semilla : 0;
     this.sys.settings.data = {};
   }
 
   create() {
     this.nivelDatos = this.modo === 'historia' ? nivelHistoria(this.nivelIndice) : null;
-    this.add.image(0, 0, asegurarMapa(this, this.nivelDatos ? this.nivelDatos.tema : null)).setOrigin(0);
-    this.cameras.main.setBounds(0, 0, MUNDO.ancho, MUNDO.alto);
+    this.vista = null;
+    if (this.nivelDatos) {
+      this.vista = new VistaHistoria(this, this.semilla, this.nivelDatos);
+      this.limitesMundo = { ancho: this.vista.anchoMundo, alto: this.vista.altoMundo };
+      this.physics.world.setBounds(0, 0, this.limitesMundo.ancho, this.limitesMundo.alto);
+    } else {
+      this.add.image(0, 0, 'ciudad').setOrigin(0);
+      this.limitesMundo = { ancho: MUNDO.ancho, alto: MUNDO.alto };
+      this.physics.world.setBounds(MUNDO.borde, MUNDO.borde, MUNDO.ancho - MUNDO.borde * 2, MUNDO.alto - MUNDO.borde * 2);
+    }
+    this.cameras.main.setBounds(0, 0, this.limitesMundo.ancho, this.limitesMundo.alto);
     this.puntoMundo = new Phaser.Math.Vector2();
 
     this.ultimoSnapshot = 0;
@@ -92,7 +106,6 @@ export default class ClienteScene extends Phaser.Scene {
     this.textoOleadaPrevio = '';
     this.vidasMostradas = -1;
     this.textoEquipoPrevio = '';
-    this.armaMostrada = -1;
     this.marca = 0;
     this.angulo = 0;
     this.proximaEntrada = 0;
@@ -103,14 +116,15 @@ export default class ClienteScene extends Phaser.Scene {
     this.acidoVista = [];
     this.balasPropias = [];
     this.enemigosVista = [];
-    this.cofresVista = new Map();
-    this.datosYo = { arma: 'pistola', mejoras: {}, vm: JUGADOR.velocidad };
+    this.datosYo = { arma: 'pistola', mejoras: {}, vm: JUGADOR.velocidad, armas: [{ id: 'pistola', balas: ARMAS.pistola.cargador }, null], aa: 0, rc: 0, dedos: 0 };
+    this.municionLocal = ARMAS.pistola.cargador;
     this.prediccion = { x: MUNDO.ancho / 2, y: MUNDO.alto / 2, vx: 0, vy: 0, tp: -1, dashHasta: 0, dvx: 0, dvy: 0 };
     this.miIndice = Math.max(0, this.red.jugadores.findIndex((jugador) => jugador.id === this.red.miId));
 
     this.jugadoresVista = new Map();
     this.red.jugadores.forEach((datos) => this.crearJugadorVista(datos));
     this.yo = this.jugadoresVista.get(this.red.miId);
+    if (this.vista) this.physics.add.collider(this.yo.sprite, this.vista.capa);
     this.seguido = null;
     this.seguir(this.yo);
 
@@ -122,18 +136,29 @@ export default class ClienteScene extends Phaser.Scene {
       maxAliveParticles: EFECTOS.particulasMax
     }).setDepth(8);
     this.onda = this.add.image(0, 0, 'onda').setDepth(9).setVisible(false);
-    this.graficoCofres = this.add.graphics().setDepth(5);
-
     this.crearHud();
 
     this.teclas = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT,SPACE');
     TECLAS_HABILIDAD.forEach((tecla) => this.input.keyboard.on('keydown-' + tecla, () => this.usarHabilidad(tecla)));
+    this.input.keyboard.on('keydown-R', () => this.accion('recargar'));
+    this.input.keyboard.on('keydown-X', () => this.accion('cambiar'));
+    this.input.keyboard.on('keydown-F', () => this.accion('interactuar'));
+    this.input.on('wheel', () => this.accion('cambiar'));
 
     this.controlesTactiles = new TouchControls(this);
     this.modoTactil = this.controlesTactiles.activo;
     this.gestor = new GestorRemoto();
     this.botonesHabilidad = new BotonesHabilidad(this, this.gestor, this.modoTactil);
     this.selectorRecompensa = new SelectorRecompensa(this);
+    this.hudArmas = new HudArmas(this);
+    this.hudArmas.mostrar(Boolean(this.vista));
+    this.botonesAccion = new BotonesAccion(this, (nombre) => this.accion(nombre));
+    this.botonesAccion.cambiarModo(this.modoTactil && Boolean(this.vista));
+    this.minimapa = this.vista ? new Minimapa(this, this.vista.mazmorra) : null;
+    if (this.minimapa) this.textoEquipo.setY(this.minimapa.abajo + 10);
+    this.textoInteraccion = this.add.text(0, 0, '', { fontFamily: FUENTE, fontSize: '13px', fontStyle: 'bold', color: '#e8f070', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5).setDepth(20).setVisible(false);
+    this.textoAviso = crearTexto(this, ANCHO / 2, ALTO - 140, '', 16, '#ff8fa3').setOrigin(0.5).setDepth(PROFUNDIDAD_HUD).setAlpha(0);
+    if (this.nivelDatos) this.textoOleada.setText('M' + this.nivelDatos.mundo + '-' + this.nivelDatos.numero + ' · ' + this.nivelDatos.nombre);
 
     this.red.alSnapshot = (datos) => this.aplicarSnapshot(datos);
     this.red.on('mensaje', this.alMensajeRed, this);
@@ -145,11 +170,19 @@ export default class ClienteScene extends Phaser.Scene {
 
   crearJugadorVista(datos) {
     const local = datos.id === this.red.miId;
+    const sprite = local
+      ? this.physics.add.image(this.limitesMundo.ancho / 2, this.limitesMundo.alto / 2, 'jugador')
+      : this.add.image(this.limitesMundo.ancho / 2, this.limitesMundo.alto / 2, 'jugador');
+    sprite.setDepth(10).setVisible(false);
+    if (local) {
+      sprite.body.setCircle(JUGADOR.radio, sprite.width / 2 - JUGADOR.radio, sprite.height / 2 - JUGADOR.radio);
+      sprite.setCollideWorldBounds(true);
+    }
     const vista = {
       id: datos.id,
       nombre: datos.nombre,
       local,
-      sprite: this.add.image(MUNDO.ancho / 2, MUNDO.alto / 2, 'jugador').setDepth(10).setVisible(false),
+      sprite,
       escudo: this.add.image(0, 0, 'escudo').setDepth(11).setVisible(false),
       etiqueta: this.add.text(0, 0, datos.nombre, {
         fontFamily: FUENTE,
@@ -175,7 +208,6 @@ export default class ClienteScene extends Phaser.Scene {
     this.textoPuntos = crearTexto(this, 16, 10, 'Puntos: 0', 22).setDepth(PROFUNDIDAD_HUD);
     this.textoOleada = crearTexto(this, ANCHO / 2, 10, '', 22).setOrigin(0.5, 0).setDepth(PROFUNDIDAD_HUD);
     this.textoEquipo = crearTexto(this, ANCHO - 16, 10, '', 14).setOrigin(1, 0).setDepth(PROFUNDIDAD_HUD).setAlign('right');
-    this.textoArma = crearTexto(this, 16, 92, '', 14, '#d9a03a').setDepth(PROFUNDIDAD_HUD).setVisible(this.modo === 'historia');
     this.iconosVida = [];
     const maximo = JUGADOR.vidas + PASIVAS.vitalidad.maximo;
     for (let i = 0; i < maximo; i++) {
@@ -203,7 +235,7 @@ export default class ClienteScene extends Phaser.Scene {
       ranuras: {
         E: HABILIDADES.tipos[ranuras.E] ? ranuras.E : null,
         Q: HABILIDADES.tipos[ranuras.Q] ? ranuras.Q : null,
-        R: HABILIDADES.tipos[ranuras.R] ? ranuras.R : null
+        C: HABILIDADES.tipos[ranuras.C] ? ranuras.C : null
       }
     };
     this.selectorRecompensa.mostrar(datos.r, seguro, (decision) => {
@@ -239,7 +271,7 @@ export default class ClienteScene extends Phaser.Scene {
     this.aplicarEnemigos(datos.e);
     this.balasDatos = datos.b;
     this.acidoDatos = datos.a;
-    this.aplicarCofres(datos.c);
+    if (this.vista) this.vista.aplicar(datos);
     this.aplicarJefe(datos.jf);
     this.aplicarDatosPropios(datos.yo, ahora);
 
@@ -247,9 +279,11 @@ export default class ClienteScene extends Phaser.Scene {
       this.puntos = datos.p;
       this.textoPuntos.setText('Puntos: ' + this.puntos);
     }
-    const textoOleada = this.nivelDatos
-      ? 'M' + this.nivelDatos.mundo + '-' + this.nivelDatos.numero + ' · Oleada ' + datos.o + '/' + datos.ot
-      : 'Oleada ' + datos.o;
+    let textoOleada = 'Oleada ' + datos.o;
+    if (this.nivelDatos) {
+      const prefijo = 'M' + this.nivelDatos.mundo + '-' + this.nivelDatos.numero + ' · ';
+      textoOleada = datos.sa >= 0 && datos.ot > 0 ? prefijo + 'Oleada ' + datos.o + '/' + datos.ot : prefijo + this.nivelDatos.nombre;
+    }
     if (textoOleada !== this.textoOleadaPrevio) {
       this.textoOleadaPrevio = textoOleada;
       this.textoOleada.setText(textoOleada);
@@ -289,37 +323,6 @@ export default class ClienteScene extends Phaser.Scene {
     });
   }
 
-  aplicarCofres(lista) {
-    const g = this.graficoCofres;
-    g.clear();
-    if (!lista) {
-      this.cofresVista.forEach((vista) => vista.sprite.destroy());
-      this.cofresVista.clear();
-      return;
-    }
-    lista.forEach(([id, tipoIndice, x, y, abierto, progreso]) => {
-      const tipo = TIPOS_COFRE[tipoIndice];
-      if (!tipo) return;
-      let vista = this.cofresVista.get(id);
-      if (!vista) {
-        vista = { sprite: this.add.image(x, y, 'cofre-' + tipo).setDepth(4), abierto: false };
-        this.tweens.add({ targets: vista.sprite, y: y - 5, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-        this.cofresVista.set(id, vista);
-      }
-      if (abierto && !vista.abierto) {
-        vista.abierto = true;
-        this.tweens.killTweensOf(vista.sprite);
-        vista.sprite.setTexture('cofre-' + tipo + '-abierto').setY(y);
-      }
-      if (!abierto && progreso > 0) {
-        g.lineStyle(4, COFRES.tipos[tipo].color, 1);
-        g.beginPath();
-        g.arc(x, y, 32, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * progreso) / 100, false);
-        g.strokePath();
-      }
-    });
-  }
-
   aplicarJefe(jefe) {
     const visible = Boolean(jefe);
     this.barraJefeFondo.setVisible(visible);
@@ -338,16 +341,20 @@ export default class ClienteScene extends Phaser.Scene {
     this.datosYo.arma = arma;
     this.datosYo.mejoras = yo.m || {};
     this.datosYo.vm = Number.isFinite(yo.vm) ? yo.vm : JUGADOR.velocidad;
-    if (yo.arma !== this.armaMostrada) {
-      this.armaMostrada = yo.arma;
-      this.textoArma.setText('Arma: ' + ARMAS[arma].nombre);
+    this.datosYo.dedos = yo.dedos || 0;
+    this.datosYo.aa = yo.aa === 1 ? 1 : 0;
+    this.datosYo.rc = (yo.rc || 0) / 1000;
+    if (Array.isArray(yo.armas)) {
+      this.datosYo.armas = yo.armas.map((ranura) => (ranura && IDS_ARMA[ranura[0]] ? { id: IDS_ARMA[ranura[0]], balas: ranura[1] } : null));
+      const actual = this.datosYo.armas[this.datosYo.aa];
+      this.municionLocal = actual ? actual.balas : 0;
     }
     if (yo.tp !== this.prediccion.tp) {
       this.prediccion.tp = yo.tp;
       this.prediccion.x = yo.x;
       this.prediccion.y = yo.y;
       this.prediccion.dashHasta = 0;
-      this.yo.sprite.setPosition(yo.x, yo.y);
+      this.yo.sprite.body.reset(yo.x, yo.y);
     }
   }
 
@@ -389,6 +396,9 @@ export default class ClienteScene extends Phaser.Scene {
       case EVENTO.sacudida:
         if (evento[1] === this.red.miId) this.cameras.main.shake(EFECTOS.sacudidaMs, EFECTOS.sacudidaIntensidad);
         break;
+      case EVENTO.aviso:
+        if (evento[1] === this.red.miId) this.mostrarAviso(String(evento[2]));
+        break;
       default:
         break;
     }
@@ -418,6 +428,32 @@ export default class ClienteScene extends Phaser.Scene {
     return Boolean(this.yo.banderas & BANDERA_JUGADOR.vivo);
   }
 
+  mostrarAviso(texto) {
+    this.tweens.killTweensOf(this.textoAviso);
+    this.textoAviso.setText(texto).setAlpha(1);
+    this.tweens.add({ targets: this.textoAviso, alpha: 0, delay: 1200, duration: 400 });
+  }
+
+  accion(nombre) {
+    if (!this.vista || !this.vivo()) return;
+    this.red.enviarAnfitrion({ t: 'accion', a: nombre });
+  }
+
+  actualizarHistoria(time) {
+    if (!this.vista) return;
+    this.hudArmas.actualizar(this.datosYo.armas, this.datosYo.aa, this.datosYo.rc, this.datosYo.dedos);
+    const p = this.prediccion;
+    const objetivo = this.vivo() ? this.vista.interactuable(p.x, p.y) : null;
+    this.botonesAccion.fijarInteraccion(Boolean(objetivo));
+    if (objetivo) this.textoInteraccion.setText(objetivo.texto).setPosition(objetivo.x, objetivo.y - 40).setVisible(true);
+    else this.textoInteraccion.setVisible(false);
+    const posiciones = [];
+    this.jugadoresVista.forEach((vista) => {
+      if (vista.banderas & BANDERA_JUGADOR.vivo) posiciones.push(vista.local ? p : vista.sprite);
+    });
+    this.minimapa.actualizar(time, posiciones, p, this.vista.salaCerrada);
+  }
+
   usarHabilidad(tecla) {
     if (!this.vivo() || !this.gestor.desbloqueada(tecla)) return;
     const ahora = this.time.now;
@@ -441,6 +477,7 @@ export default class ClienteScene extends Phaser.Scene {
     if (this.controlesTactiles.activo === this.modoTactil) return;
     this.modoTactil = this.controlesTactiles.activo;
     this.botonesHabilidad.cambiarModo(this.modoTactil);
+    this.botonesAccion.cambiarModo(this.modoTactil && Boolean(this.vista));
   }
 
   enemigoMasCercano() {
@@ -461,7 +498,7 @@ export default class ClienteScene extends Phaser.Scene {
     return mejor;
   }
 
-  predecirMovimiento(dx, dy, time, delta) {
+  predecirMovimiento(dx, dy, time) {
     const p = this.prediccion;
     if (time < p.dashHasta) {
       p.vx = p.dvx;
@@ -473,17 +510,15 @@ export default class ClienteScene extends Phaser.Scene {
       p.vx = nx * this.datosYo.vm;
       p.vy = ny * this.datosYo.vm;
     }
-    const segundos = delta / 1000;
-    const minimo = MUNDO.borde + JUGADOR.radio;
-    p.x = Phaser.Math.Clamp(p.x + p.vx * segundos, minimo, MUNDO.ancho - minimo);
-    p.y = Phaser.Math.Clamp(p.y + p.vy * segundos, minimo, MUNDO.alto - minimo);
-    this.yo.sprite.setPosition(p.x, p.y);
+    this.yo.sprite.body.setVelocity(p.vx, p.vy);
   }
 
   dispararLocal(time) {
     const arma = estadisticasArma(this.datosYo.arma, this.datosYo.mejoras);
     const frenesi = this.yo.banderas & BANDERA_JUGADOR.frenesi ? HABILIDADES.tipos.frenesi.multiplicadorCadencia : 1;
     if (time < this.proximoDisparoLocal) return;
+    if (this.vista && (this.municionLocal <= 0 || this.datosYo.rc > 0)) return;
+    if (this.vista) this.municionLocal -= 1;
     this.proximoDisparoLocal = time + arma.cadenciaMs / frenesi;
     const p = this.prediccion;
     const x = p.x + Math.cos(this.angulo) * BALA.distanciaCanon;
@@ -516,7 +551,7 @@ export default class ClienteScene extends Phaser.Scene {
       if (!imagen.visible) continue;
       imagen.x += bala.vx * segundos;
       imagen.y += bala.vy * segundos;
-      if (time > bala.hasta) {
+      if (time > bala.hasta || (this.vista && this.vista.esSolido(imagen.x, imagen.y))) {
         imagen.setVisible(false);
         continue;
       }
@@ -563,9 +598,13 @@ export default class ClienteScene extends Phaser.Scene {
 
     const vivo = this.vivo();
     if (vivo) {
-      this.predecirMovimiento(dx, dy, time, delta);
+      this.predecirMovimiento(dx, dy, time);
       if (disparando) this.dispararLocal(time);
+    } else {
+      this.yo.sprite.body.setVelocity(0, 0);
     }
+    p.x = this.yo.sprite.x;
+    p.y = this.yo.sprite.y;
 
     if (time < this.proximaEntrada) return;
     this.proximaEntrada = time + RED.intervaloEntradaMs;
@@ -658,6 +697,7 @@ export default class ClienteScene extends Phaser.Scene {
     this.moverBalasPropias(time, delta);
     this.moverVistas(time, delta);
     this.revisarCamara();
+    this.actualizarHistoria(time);
     this.botonesHabilidad.actualizar(time);
   }
 }

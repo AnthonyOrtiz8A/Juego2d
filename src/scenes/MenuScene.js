@@ -4,7 +4,6 @@ import Storage from '../systems/Storage.js';
 import Sonido from '../systems/Sonido.js';
 import { crearTexto, crearBoton } from '../systems/Interfaz.js';
 import { esDispositivoTactil } from '../systems/TouchControls.js';
-import { nivelHistoria } from '../systems/Mapas.js';
 
 const ALTO_BOTON = 42;
 const ANCHO_BOTON = 300;
@@ -51,27 +50,7 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   crearBotonHistoria(y) {
-    const guardada = Storage.obtenerHistoria();
-    const nivel = guardada ? nivelHistoria(guardada.nivel) : null;
-    if (!nivel) {
-      crearBoton(this, ANCHO / 2, y, 'Modo historia', () => this.iniciarHistoria(null), ANCHO_BOTON, ALTO_BOTON);
-      return;
-    }
-    const texto = 'Continuar historia ' + nivel.mundo + '-' + nivel.numero;
-    crearBoton(this, ANCHO / 2, y, texto, () => this.iniciarHistoria(guardada), ANCHO_BOTON, ALTO_BOTON);
-    crearBoton(this, ANCHO / 2 + ANCHO_BOTON / 2 + 70, y, 'Nueva', () => {
-      Storage.borrarHistoria();
-      this.iniciarHistoria(null);
-    }, 120, ALTO_BOTON);
-  }
-
-  iniciarHistoria(guardada) {
-    this.scene.start('Game', {
-      modo: 'historia',
-      nivel: guardada ? guardada.nivel : 0,
-      estado: guardada ? guardada.estado : null,
-      puntos: guardada ? guardada.puntos : 0
-    });
+    crearBoton(this, ANCHO / 2, y, 'Modo historia', () => this.scene.start('Game', { modo: 'historia', nivel: 0 }), ANCHO_BOTON, ALTO_BOTON);
   }
 
   crearPantallaCompleta() {
@@ -103,9 +82,9 @@ export default class MenuScene extends Phaser.Scene {
 
   textoControles() {
     if (esDispositivoTactil(this.game)) {
-      return 'Mover: joystick (lado izquierdo)\nDisparar: mantén pulsado el lado derecho (apunta solo)\nHabilidades: botones E, Q (oleada 4) y R (oleada 8)';
+      return 'Mover: joystick (lado izquierdo)   ·   Disparar: lado derecho (apunta solo)\nHabilidades: botones E, Q y C   ·   Historia: botones ARMA, R (recargar) y F';
     }
-    return 'Mover: WASD o flechas   ·   Apuntar: mouse\nDisparar: clic izquierdo (mantener)   ·   Pausa: P o Esc\nHabilidades: E   ·   Q (oleada 4)   ·   R (oleada 8)';
+    return 'Mover: WASD   ·   Apuntar: mouse   ·   Disparar: clic   ·   Pausa: P o Esc\nHabilidades: E, Q y C   ·   Recargar: R   ·   Cambiar arma: X o rueda   ·   Usar: F';
   }
 
   jugar() {

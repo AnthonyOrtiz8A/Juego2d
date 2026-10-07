@@ -75,9 +75,9 @@ export default class GestorHabilidades {
   constructor(scene, jugador) {
     this.scene = scene;
     this.jugador = jugador;
-    this.ranuras = { E: HABILIDADES.inicial, Q: null, R: null };
-    this.listaEn = { E: 0, Q: 0, R: 0 };
-    this.duraciones = { E: 1, Q: 1, R: 1 };
+    this.ranuras = { E: HABILIDADES.inicial, Q: null, C: null };
+    this.listaEn = { E: 0, Q: 0, C: 0 };
+    this.duraciones = { E: 1, Q: 1, C: 1 };
   }
 
   desbloqueada(tecla) {

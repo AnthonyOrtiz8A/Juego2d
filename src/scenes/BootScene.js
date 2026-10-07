@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { MUNDO, COLORES, TACTIL, PACMAN, COFRES } from '../config.js';
-import { ESTUDIANTE, ZOMBIES, TAMANO_COFRE, dibujarEstudiante, dibujarZombie, dibujarCiudad, dibujarAcido, dibujarCorazon, dibujarCofre } from '../systems/Dibujos.js';
+import { MUNDO, COLORES, TACTIL, PACMAN, COFRES, ARMAS } from '../config.js';
+import { ESTUDIANTE, ZOMBIES, TAMANO_COFRE, DECORACIONES, TAMANO_DECORACION, dibujarEstudiante, dibujarZombie, dibujarCiudad, dibujarAcido, dibujarCorazon, dibujarCofre, dibujarDecoracion, dibujarArma, dibujarPortal, dibujarVendedor, dibujarPedestal, dibujarDedo } from '../systems/Dibujos.js';
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -42,6 +42,18 @@ export default class BootScene extends Phaser.Scene {
     });
 
     this.crearPacman();
+
+    DECORACIONES.forEach((tipo) => {
+      const [ancho, alto] = TAMANO_DECORACION[tipo];
+      this.crearTextura('deco-' + tipo, ancho, alto, (g) => dibujarDecoracion(g, tipo));
+    });
+    Object.keys(ARMAS).forEach((id) => {
+      this.crearTextura('arma-' + id, 46, 24, (g) => dibujarArma(g, id, ARMAS[id].color));
+    });
+    this.crearTextura('portal', 80, 80, dibujarPortal);
+    this.crearTextura('vendedor', 44, 44, dibujarVendedor);
+    this.crearTextura('pedestal', 46, 44, dibujarPedestal);
+    this.crearTextura('dedo', 20, 14, dibujarDedo);
 
     Object.keys(COFRES.tipos).forEach((tipo) => {
       this.crearTextura('cofre-' + tipo, TAMANO_COFRE.ancho, TAMANO_COFRE.alto, (g) => dibujarCofre(g, tipo, false));

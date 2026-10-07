@@ -12,13 +12,16 @@ Shooter top-down de arena con oleadas infinitas, hecho con **Phaser 3** y **Vite
 | Pausa    | P o Esc                       | Botón **II** (arriba a la derecha, solo táctil)    |
 | Habilidad 1 | E                          | Botón **E** (sobre el botón de disparo)            |
 | Habilidad 2 | Q (desde la oleada 4)      | Botón **Q** (a la izquierda del disparo)           |
-| Habilidad 3 | R (desde la oleada 8)      | Botón **R** (arriba a la izquierda del disparo)    |
+| Habilidad 3 | C (desde la oleada 8)      | Botón **C** (arriba a la izquierda del disparo)    |
+| Recargar (historia) | R (también es automática al vaciar el cargador) | Botón **R** |
+| Cambiar arma (historia) | X o rueda del mouse | Botón **ARMA** |
+| Usar / comprar (historia) | F | Botón **F** (aparece cerca de armas y tiendas) |
 
 En PC no se muestran botones en pantalla: los enfriamientos aparecen como texto bajo las vidas. El mapa mide 1600 × 1200 y la cámara sigue al jugador.
 
 ### Habilidades
 
-Empiezas con **Impulso** en la tecla E. Al terminar la oleada 3 se desbloquea la tecla Q y al terminar la 7 la tecla R; en cada caso eliges la habilidad para esa tecla. Cada 2 oleadas (2, 4, 6…) puedes elegir uno de 3 poderes al azar para reemplazar uno de los tuyos, o mantener los que tienes.
+Empiezas con **Impulso** en la tecla E. Al terminar la oleada 3 se desbloquea la tecla Q y al terminar la 7 la tecla C; en cada caso eliges la habilidad para esa tecla. Cada 2 oleadas (2, 4, 6…) puedes elegir uno de 3 poderes al azar para reemplazar uno de los tuyos, o mantener los que tienes.
 
 | Poder          | Efecto                                              | Enfriamiento |
 |----------------|-----------------------------------------------------|--------------|
@@ -37,9 +40,9 @@ Los enfriamientos se detienen mientras el juego está en pausa o eligiendo poder
 - El récord se guarda en el navegador (`localStorage`).
 - El sonido (generado con WebAudio) está desactivado por defecto; se activa desde el menú.
 
-## Modo historia
+## Modo historia (estilo *roguelike*)
 
-Cruza la ciudad infestada en 3 mundos y 10 niveles, cada uno con su propia ambientación:
+Cruza la ciudad infestada en 3 mundos y 10 niveles, solo o con hasta 3 amigos (el anfitrión elige **Historia** en la sala).
 
 | Mundo | Niveles |
 |-------|---------|
@@ -47,15 +50,16 @@ Cruza la ciudad infestada en 3 mundos y 10 niveles, cada uno con su propia ambie
 | 2 · El centro | Distrito financiero → Hospital general → Zona industrial (**minijefe: El Bruto**) |
 | 3 · La salida | Puerto → Autopista → Base militar → Puente de escape (**jefe final: La Abominación**) |
 
-- Cada nivel tiene un número fijo de oleadas; el último de cada mundo es más difícil y termina con un jefe.
-- Los jefes embisten tras un aviso; la Abominación además lanza lluvias de ácido e invoca zombies. Con menos de la mitad de vida se enfurecen.
-- **Cofres:** al terminar cada nivel aparecen tantos cofres como jugadores, más uno. Quédate encima de un cofre para abrirlo y elige si tomas la recompensa o conservas lo que tienes. Cada tipo tiene su diseño:
-  - Azul con rayo: **habilidad activa** (eliges en qué tecla ponerla: E, Q o R).
-  - Caja militar verde con pistola: **arma** (pistola, escopeta, subfusil, rifle).
-  - Madera con corazón verde: **habilidad pasiva** (vitalidad, agilidad, regeneración, vampiro, blindaje, recarga rápida).
-  - Morado y dorado con flecha: **mejora** del arma (daño, cadencia, perforación, balas extra, alcance).
-- El equipo se conserva de un nivel a otro. En solitario el progreso se guarda al empezar cada nivel (**Continuar historia** en el menú) y si caes puedes reintentar el nivel.
-- La historia también se puede jugar en multijugador: el anfitrión elige el modo en la sala.
+- **Mazmorras generadas al azar en cada partida**, al estilo Soul Knight: cada nivel es un conjunto de salas unidas por pasillos, con la ambientación de su zona y un minimapa arriba a la derecha.
+  - **Combate:** al entrar se cierran las puertas hasta acabar con las oleadas.
+  - **Tesoro:** cofres para todos (uno por jugador, más uno).
+  - **Tienda:** un vendedor con artículos que se pagan con **dedos de zombie**.
+  - **Salida:** un portal; todo el equipo debe pararse en él para avanzar. En los niveles con jefe, el portal aparece al derrotarlo.
+- **Armas:** llevas 2 y cambias cuando quieras. Cada una tiene cargador y tiempo de recarga. Hay 7: pistola, revólver, escopeta, subfusil, ametralladora, rifle (perforante) y lanzagranadas (daño en área). Las armas nuevas caen al suelo (de cofres o al cambiar) y se recogen con **F**; si tienes las dos ranuras llenas, sueltas la que tienes en la mano.
+- **Dedos de zombie:** algunos zombies los sueltan al morir (los grandes y los jefes, más). Se recogen al pasar cerca y cada jugador tiene los suyos. En las tiendas compras armas, habilidades activas, pasivas y mejoras que aún no tienes.
+- **Cofres:** cada tipo tiene su diseño: azul con rayo (**habilidad activa**, eliges en E, Q o C), caja militar verde (**arma**, cae al suelo), madera con corazón (**pasiva**) y morado con flecha (**mejora** del arma).
+- **Jefes:** embisten tras un aviso; la Abominación además lanza ácido e invoca zombies, y se enfurece con poca vida.
+- **Muerte permanente:** el equipo se conserva de nivel en nivel, pero si caes (o cae todo el equipo) la partida se pierde y empiezas de nuevo desde el Barrio residencial. No se guarda progreso.
 
 ## Multijugador (hasta 4 jugadores)
 
@@ -69,7 +73,7 @@ Cooperativo: todos contra las mismas oleadas, con puntaje de equipo.
 - El anfitrión ejecuta la partida: si cierra la pestaña o la deja en segundo plano, el juego se detiene para todos.
 - Para reducir el retraso, cada jugador mueve y dispara a su personaje al instante en su propia pantalla (predicción local) y el anfitrión solo corrige cuando hace falta. Las posiciones viajan por un canal rápido sin orden y cada jugador recibe solo lo que está cerca de él.
 - Si un jugador pierde todas sus vidas queda caído y revive con 1 vida al empezar la siguiente oleada. La partida termina cuando caen todos.
-- En multijugador no hay pausa ni selector de poderes: al desbloquear Q (oleada 4) y R (oleada 8) cada jugador recibe una habilidad al azar.
+- En multijugador no hay pausa ni selector de poderes: al desbloquear Q (oleada 4) y C (oleada 8) cada jugador recibe una habilidad al azar.
 - Al terminar, el anfitrión puede volver a la sala con los mismos jugadores.
 
 ## Pantalla completa
@@ -160,7 +164,8 @@ Como `vite.config.js` usa `base: './'`, el build funciona en cualquier ruta sin 
     ├── scenes/              Boot (genera texturas), Menu, Game, GameOver, Pacman, Lobby, Cliente
     ├── entities/            Player, Enemy, Bullet
     └── systems/             WaveManager, TouchControls, Storage, Sonido, Interfaz, Dibujos, Red, Protocolo,
-                             Mapas, Recompensas, SelectorRecompensa,
+                             Mapas, Recompensas, SelectorRecompensa, Mazmorra, Historia, VistaHistoria,
+                             HudArmas, Minimapa, BotonesAccion,
                              Habilidades, BotonesHabilidad, SelectorHabilidades
 ```
 

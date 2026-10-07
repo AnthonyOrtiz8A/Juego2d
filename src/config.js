@@ -146,7 +146,7 @@ export const EFECTOS = {
 export const HABILIDADES = {
   inicial: 'dash',
   cadaOleadas: 2,
-  desbloqueos: { Q: 4, R: 8 },
+  desbloqueos: { Q: 4, C: 8 },
   opcionesPorEleccion: 3,
   esperaSelectorMs: 700,
   tipos: {
@@ -229,10 +229,51 @@ export const RED = {
 };
 
 export const ARMAS = {
-  pistola: { nombre: 'Pistola', cadenciaMs: 110, danio: 1, balas: 1, dispersion: 0, velocidad: 640, vidaMs: 1100, perforacion: 0 },
-  escopeta: { nombre: 'Escopeta', cadenciaMs: 520, danio: 1.2, balas: 6, dispersion: 0.55, velocidad: 580, vidaMs: 430, perforacion: 0 },
-  subfusil: { nombre: 'Subfusil', cadenciaMs: 65, danio: 0.7, balas: 1, dispersion: 0.12, velocidad: 700, vidaMs: 900, perforacion: 0 },
-  rifle: { nombre: 'Rifle', cadenciaMs: 380, danio: 4, balas: 1, dispersion: 0, velocidad: 980, vidaMs: 1300, perforacion: 3 }
+  pistola: { nombre: 'Pistola', cadenciaMs: 150, danio: 1, balas: 1, dispersion: 0.04, velocidad: 640, vidaMs: 1100, perforacion: 0, cargador: 12, recargaMs: 900, precio: 6, color: 0x9a9a9a },
+  revolver: { nombre: 'Revólver', cadenciaMs: 330, danio: 3, balas: 1, dispersion: 0, velocidad: 760, vidaMs: 1100, perforacion: 1, cargador: 6, recargaMs: 1300, precio: 12, color: 0xc9a227 },
+  escopeta: { nombre: 'Escopeta', cadenciaMs: 520, danio: 1.2, balas: 6, dispersion: 0.55, velocidad: 580, vidaMs: 430, perforacion: 0, cargador: 6, recargaMs: 1400, precio: 14, color: 0x8a5a2b },
+  subfusil: { nombre: 'Subfusil', cadenciaMs: 70, danio: 0.7, balas: 1, dispersion: 0.12, velocidad: 700, vidaMs: 900, perforacion: 0, cargador: 30, recargaMs: 1500, precio: 14, color: 0x4a6a8a },
+  ametralladora: { nombre: 'Ametralladora', cadenciaMs: 55, danio: 0.8, balas: 1, dispersion: 0.18, velocidad: 680, vidaMs: 1000, perforacion: 0, cargador: 60, recargaMs: 2300, precio: 20, color: 0x3a3a3a },
+  rifle: { nombre: 'Rifle', cadenciaMs: 420, danio: 4, balas: 1, dispersion: 0, velocidad: 980, vidaMs: 1300, perforacion: 3, cargador: 5, recargaMs: 1600, precio: 18, color: 0x4b5a33 },
+  lanzagranadas: { nombre: 'Lanzagranadas', cadenciaMs: 700, danio: 5, balas: 1, dispersion: 0, velocidad: 430, vidaMs: 900, perforacion: 0, cargador: 4, recargaMs: 1900, precio: 22, color: 0x2f5d3a, explosivo: 95 }
+};
+
+export const MUNICION = {
+  armaInicial: 'pistola',
+  ranurasArma: 2
+};
+
+export const DEDOS = {
+  probabilidad: { normal: 0.35, rapido: 0.3, tanque: 0.9, tirador: 0.6, minijefe: 1, jefe: 1 },
+  cantidad: { normal: 1, rapido: 1, tanque: 2, tirador: 1, minijefe: 8, jefe: 15 },
+  radioRecoger: 26,
+  radioIman: 110,
+  velocidadIman: 380,
+  poolMax: 80,
+  vidaMs: 30000
+};
+
+export const TIENDA = {
+  articulos: 4,
+  precio: { arma: 1, activa: 16, mejora: 9, pasiva: 11 },
+  probabilidad: 0.7,
+  radioInteraccion: 46
+};
+
+export const MAZMORRA = {
+  tile: 32,
+  celda: 26,
+  columnas: 5,
+  filas: 5,
+  salaMin: { ancho: 14, alto: 11 },
+  salaMax: { ancho: 21, alto: 18 },
+  anchoPasillo: 3,
+  combatesBase: 3,
+  oleadasPorSala: [1, 2],
+  decoracionPorSala: 7,
+  radioPortal: 56,
+  margenAparicion: 90,
+  distanciaAparicion: 170
 };
 
 export const PASIVAS = {

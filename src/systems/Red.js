@@ -215,10 +215,10 @@ export default class Red extends Phaser.Events.EventEmitter {
       case 'iniciar':
         this.jugadores = datos.jugadores;
         this.modo = datos.modo;
-        this.irA('Cliente', { red: this, modo: datos.modo, nivel: datos.nivel });
+        this.irA('Cliente', { red: this, modo: datos.modo, nivel: datos.nivel, semilla: datos.semilla });
         break;
       case 'nivel':
-        this.irA('Cliente', { red: this, modo: datos.modo, nivel: datos.nivel });
+        this.irA('Cliente', { red: this, modo: datos.modo, nivel: datos.nivel, semilla: datos.semilla });
         break;
       case 'fin':
         this.irA('GameOver', { puntos: datos.puntos, oleada: datos.oleada, modo: datos.modo, nivel: datos.nivel, victoria: datos.victoria, red: this });
@@ -248,13 +248,13 @@ export default class Red extends Phaser.Events.EventEmitter {
     this.enviarLobby();
   }
 
-  iniciarPartida(nivel = 0) {
+  iniciarPartida(nivel, semilla) {
     this.enPartida = true;
-    this.enviarATodos({ t: 'iniciar', jugadores: this.jugadores, modo: this.modo, nivel });
+    this.enviarATodos({ t: 'iniciar', jugadores: this.jugadores, modo: this.modo, nivel, semilla });
   }
 
-  cambiarNivel(nivel) {
-    this.enviarATodos({ t: 'nivel', modo: this.modo, nivel });
+  cambiarNivel(nivel, semilla) {
+    this.enviarATodos({ t: 'nivel', modo: this.modo, nivel, semilla });
   }
 
   terminarPartida(datos) {
