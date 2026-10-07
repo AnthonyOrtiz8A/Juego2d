@@ -40,9 +40,10 @@ export default class PersonajesScene extends Phaser.Scene {
       const datos = PERSONAJES[id];
       const fondo = this.add.rectangle(x, y, anchoTarjeta, ALTO_TARJETA, COLOR_TARJETA, 0.92).setStrokeStyle(2, 0x3a4470, 1).setInteractive({ useHandCursor: true });
       fondo.on('pointerdown', () => this.elegir(i));
-      const sprite = this.add.image(x, y - 28, 'jugador-' + id).setScale(1.7).setAngle(-90);
-      crearTexto(this, x, y + 32, datos.nombre, 18).setOrigin(0.5);
-      crearTexto(this, x, y + 54, datos.rol, 13, '#9aa4c7').setOrigin(0.5);
+      const sprite = this.add.image(x, y - 32, 'jugador-' + id).setScale(1.7).setAngle(-90);
+      crearTexto(this, x, y + 22, datos.nombre, 18).setOrigin(0.5);
+      crearTexto(this, x, y + 42, datos.rol, 13, '#9aa4c7').setOrigin(0.5);
+      crearTexto(this, x, y + 61, 'Vida ' + datos.vidas + ' · Armadura ' + datos.armadura, 12, '#ff8fa3').setOrigin(0.5);
       return { id, fondo, sprite };
     });
 
@@ -89,7 +90,7 @@ export default class PersonajesScene extends Phaser.Scene {
     });
     const datos = PERSONAJES[IDS_PERSONAJE[indice]];
     const ulti = datos.ulti;
-    this.titulo.setText(datos.nombre + ' · ' + datos.rol);
+    this.titulo.setText(datos.nombre + ' · ' + datos.rol + ' · ♥ ' + datos.vidas + ' vidas · ◆ ' + datos.armadura + ' de armadura');
     this.textoPasiva.setText('Pasiva de equipo: ' + enLinea(datos.pasiva.texto.replace('Equipo: ', '')));
     this.textoUlti.setText(
       'Ulti: ' + ulti.nombre + ' — ' + enLinea(ulti.texto) +

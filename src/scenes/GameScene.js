@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ANCHO, ALTO, MUNDO, JUGADOR, BALA, BALA_ENEMIGA, ENEMIGOS, EFECTOS, TACTIL, HABILIDADES, RED, HISTORIA, ARMAS, APARICION } from '../config.js';
+import { ANCHO, ALTO, MUNDO, JUGADOR, BALA, BALA_ENEMIGA, ENEMIGOS, EFECTOS, TACTIL, HABILIDADES, RED, HISTORIA, ARMAS, APARICION, REANIMAR } from '../config.js';
 import Player from '../entities/Player.js';
 import Bullet from '../entities/Bullet.js';
 import Enemy from '../entities/Enemy.js';
@@ -22,7 +22,8 @@ import Energia from '../systems/Energia.js';
 import GestorUltis from '../systems/Ultis.js';
 import HudUlti from '../systems/HudUlti.js';
 import { efectoAparicion, mostrarMarca, actualizarAnillo } from '../systems/Efectos.js';
-import { personajeValido, datosPersonaje, modificadoresEquipo } from '../systems/Personajes.js';
+import { personajeValido, datosPersonaje, modificadoresEquipo, duracionUlti } from '../systems/Personajes.js';
+import { BarraJugador, HudVida } from '../systems/BarrasVida.js';
 import { TIPOS_ENEMIGO, IDS_HABILIDAD, TECLAS_HABILIDAD, IDS_ARMA, BANDERA_JUGADOR, BANDERA_ENEMIGO, EVENTO } from '../systems/Protocolo.js';
 
 const PROFUNDIDAD_HUD = 30;
@@ -140,6 +141,7 @@ export default class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-X', () => this.accion('cambiar'));
     this.input.keyboard.on('keydown-F', () => this.accion('interactuar'));
     this.input.keyboard.on('keydown-R', () => this.usarUlti());
+    this.input.keyboard.on('keydown-V', () => this.reanimar());
     this.input.on('wheel', () => this.accion('cambiar'));
 
     this.crearHud();
@@ -154,8 +156,11 @@ export default class GameScene extends Phaser.Scene {
     this.hudArmas = new HudArmas(this);
     this.hudArmas.mostrar(this.historia);
     this.botonesAccion = new BotonesAccion(this, (nombre) => this.accion(nombre));
-    this.botonesAccion.cambiarModo(this.modoTactil && this.historia);
+    this.botonesAccion.cambiarModo(this.modoTactil, this.historia);
     this.minimapa = this.historiaCtrl ? new Minimapa(this, this.historiaCtrl.mazmorra) : null;
+    this.graficoReanimar = this.add.graphics().setDepth(13);
+    this.textoReanimar = this.add.text(0, 0, '', { fontFamily: FUENTE, fontSize: '13px', fontStyle: 'bold', color: '#4cd97b', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5).setDepth(20).setVisible(false);
+    this.senuelos = [];
     if (this.minimapa) this.textoEquipo.setY(this.minimapa.abajo + 10);
     this.textoInteraccion = this.add.text(0, 0, '', { fontFamily: FUENTE, fontSize: '13px', fontStyle: 'bold', color: '#e8f070', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5).setDepth(20).setVisible(false);
     this.textoAviso = crearTexto(this, ANCHO / 2, ALTO - 140, '', 16, '#ff8fa3').setOrigin(0.5).setDepth(PROFUNDIDAD_HUD).setAlpha(0);
@@ -223,6 +228,8 @@ export default class GameScene extends Phaser.Scene {
       jugador.habilidades = new GestorHabilidades(this, jugador);
       jugador.modsEquipo = this.modsEquipo;
       jugador.vidas = jugador.vidasMaximas();
+      jugador.armadura = jugador.armaduraMaxima();
+      jugador.barra = new BarraJugador(this);
       jugador.entrada.x = null;
       jugador.entrada.y = null;
       jugador.entrada.ulti = false;
@@ -284,12 +291,7 @@ export default class GameScene extends Phaser.Scene {
     this.textoOleada = crearTexto(this, ANCHO / 2, 10, '', 22).setOrigin(0.5, 0).setDepth(PROFUNDIDAD_HUD);
     this.textoEquipo = crearTexto(this, ANCHO - 16, 10, '', 14).setOrigin(1, 0).setDepth(PROFUNDIDAD_HUD).setAlign('right');
 
-    this.iconosVida = [];
-    const maximo = JUGADOR.vidas + 3;
-    for (let i = 0; i < maximo; i++) {
-      const icono = this.add.image(26 + i * 24, 76, 'corazon').setScrollFactor(0).setDepth(PROFUNDIDAD_HUD);
-      this.iconosVida.push(icono);
-    }
+    this.hudVida = new HudVida(this);
 
     this.barraJefeFondo = this.add.rectangle(ANCHO / 2, 64, ANCHO_BARRA_JEFE + 6, 16, 0x000000, 0.75).setScrollFactor(0).setDepth(PROFUNDIDAD_HUD).setVisible(false);
     this.barraJefe = this.add.rectangle(ANCHO / 2 - ANCHO_BARRA_JEFE / 2, 64, ANCHO_BARRA_JEFE, 10, 0xc0392b, 1).setOrigin(0, 0.5).setScrollFactor(0).setDepth(PROFUNDIDAD_HUD).setVisible(false);
@@ -320,7 +322,7 @@ export default class GameScene extends Phaser.Scene {
     const texto = this.jugadores
       .map((jugador) => {
         if (jugador.desconectado) return jugador.nombre + ' (salió)';
-        return jugador.nombre + (jugador.vivo ? ' x' + jugador.vidas : ' (caído)');
+        return jugador.nombre + (jugador.vivo ? ' ♥' + jugador.vidas + ' ◆' + jugador.armadura : ' (caído)');
       })
       .join('\n');
     if (texto === this.textoEquipoPrevio) return;
@@ -339,7 +341,7 @@ export default class GameScene extends Phaser.Scene {
     if (this.controlesTactiles.activo === this.modoTactil) return;
     this.modoTactil = this.controlesTactiles.activo;
     this.botonesHabilidad.cambiarModo(this.modoTactil);
-    this.botonesAccion.cambiarModo(this.modoTactil && this.historia);
+    this.botonesAccion.cambiarModo(this.modoTactil, this.historia);
     this.hudUlti.cambiarModo(this.modoTactil);
     this.mostrarBotonPausa(this.modoTactil);
   }
@@ -445,6 +447,8 @@ export default class GameScene extends Phaser.Scene {
     jugador.energia -= ulti.costo;
     jugador.ultiDuracion = ulti.enfriamientoMs * jugador.multiplicadorEnfriamiento();
     jugador.ultiListaEn = this.reloj + jugador.ultiDuracion;
+    jugador.ultiActivaTotal = duracionUlti(ulti);
+    jugador.ultiActivaHasta = this.reloj + jugador.ultiActivaTotal;
     this.ultis.ejecutar(jugador);
     this.anunciar(this.multijugador ? jugador.nombre + ': ¡' + ulti.nombre + '!' : '¡' + ulti.nombre + '!');
     this.sonar('habilidad', jugador);
@@ -530,14 +534,130 @@ export default class GameScene extends Phaser.Scene {
     if (!companero) return;
     this.jugadores.forEach((jugador) => {
       if (jugador.vivo || jugador.desconectado) return;
-      jugador.revivir(companero.x, companero.y, RED.vidasAlRevivir, this.time.now);
-      jugador.entrada.x = null;
-      jugador.entrada.y = null;
-      if (jugador.local) {
-        this.seguir(jugador);
-        this.actualizarVidas();
+      this.levantar(jugador, companero.x, companero.y, RED.vidasAlRevivir);
+    });
+  }
+
+  levantar(jugador, x, y, vidas) {
+    jugador.revivir(x, y, vidas, this.time.now);
+    jugador.entrada.x = null;
+    jugador.entrada.y = null;
+    if (jugador.marcaCaido) jugador.marcaCaido.setVisible(false);
+    if (jugador.local) {
+      this.seguir(jugador);
+      this.actualizarVidas();
+    }
+  }
+
+  caidoCercano(jugador) {
+    let mejor = null;
+    let mejorDistancia = REANIMAR.radio;
+    this.jugadores.forEach((otro) => {
+      if (otro === jugador || otro.vivo || otro.desconectado) return;
+      const distancia = Phaser.Math.Distance.Between(jugador.x, jugador.y, otro.x, otro.y);
+      if (distancia <= mejorDistancia) {
+        mejorDistancia = distancia;
+        mejor = otro;
       }
     });
+    return mejor;
+  }
+
+  reanimar(jugador = this.jugador) {
+    if (!this.multijugador || this.pausado || this.terminado || !jugador.vivo) return;
+    const caido = this.caidoCercano(jugador);
+    if (!caido) {
+      this.avisar(jugador, 'Acércate a un compañero caído para reanimarlo');
+      return;
+    }
+    if (caido.reanimador && caido.reanimador !== jugador) return;
+    caido.reanimador = jugador;
+    this.avisar(jugador, 'Reanimando a ' + caido.nombre + '… quédate cerca');
+  }
+
+  actualizarReanimaciones(delta, time) {
+    const g = this.graficoReanimar;
+    g.clear();
+    this.jugadores.forEach((caido) => {
+      if (caido.vivo || caido.desconectado) return;
+      const reanimador = caido.reanimador;
+      if (reanimador && (!reanimador.vivo || Phaser.Math.Distance.Between(reanimador.x, reanimador.y, caido.x, caido.y) > REANIMAR.radio + 12)) {
+        caido.reanimador = null;
+        caido.progresoReanimar = 0;
+        this.avisar(reanimador, 'Reanimación interrumpida');
+      }
+      if (caido.reanimador) caido.progresoReanimar += delta;
+      g.lineStyle(2, 0x4cd97b, 0.35 + Math.sin(time / 200) * 0.2);
+      g.strokeCircle(caido.x, caido.y, REANIMAR.radio);
+      if (caido.progresoReanimar > 0) {
+        g.lineStyle(5, 0x4cd97b, 1);
+        g.beginPath();
+        g.arc(caido.x, caido.y, 28, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, caido.progresoReanimar / REANIMAR.duracionMs), false);
+        g.strokePath();
+      }
+      if (caido.progresoReanimar >= REANIMAR.duracionMs) {
+        const quien = caido.reanimador;
+        this.levantar(caido, caido.x, caido.y, REANIMAR.vidas);
+        this.mostrarOnda(caido.x, caido.y, 0x4cd97b, 100);
+        this.anunciar(quien.nombre + ' reanimó a ' + caido.nombre);
+        this.sonar('habilidad');
+      }
+    });
+    const cercano = this.jugador.vivo ? this.caidoCercano(this.jugador) : null;
+    this.botonesAccion.fijarReanimar(Boolean(cercano));
+    if (cercano && !this.modoTactil) {
+      this.textoReanimar.setText(cercano.reanimador ? 'Reanimando…' : 'V: Reanimar a ' + cercano.nombre).setPosition(cercano.x, cercano.y - 44).setVisible(true);
+    } else {
+      this.textoReanimar.setVisible(false);
+    }
+  }
+
+  saltar(jugador, datos) {
+    const angulo = jugador.rotation;
+    const limites = this.physics.world.bounds;
+    const radio = JUGADOR.radio;
+    let x = jugador.x;
+    let y = jugador.y;
+    for (let distancia = 10; distancia <= datos.distancia; distancia += 10) {
+      const nx = jugador.x + Math.cos(angulo) * distancia;
+      const ny = jugador.y + Math.sin(angulo) * distancia;
+      if (nx < limites.x + radio || nx > limites.right - radio || ny < limites.y + radio || ny > limites.bottom - radio) break;
+      if (this.historiaCtrl && [[0, 0], [radio, 0], [-radio, 0], [0, radio], [0, -radio]].some(([ox, oy]) => this.historiaCtrl.esSolido(nx + ox, ny + oy))) break;
+      x = nx;
+      y = ny;
+    }
+    this.explotar(jugador.x, jugador.y, datos.color);
+    this.teletransportar(jugador, x, y);
+    jugador.invulnerableHasta = Math.max(jugador.invulnerableHasta, this.time.now + 250);
+    this.explotar(x, y, datos.color);
+  }
+
+  crearSenuelo(jugador, datos) {
+    const sprite = this.add.image(jugador.x, jugador.y, jugador.texture.key).setDepth(9).setTint(datos.color).setAlpha(0.8).setRotation(jugador.rotation);
+    this.tweens.add({ targets: sprite, alpha: 0.35, duration: 280, yoyo: true, repeat: -1 });
+    this.senuelos.push({ x: jugador.x, y: jugador.y, hasta: this.reloj + datos.duracionMs, radio: datos.radio, sprite });
+    this.mostrarOnda(jugador.x, jugador.y, datos.color, 120);
+    if (this.multijugador) this.eventosRed.push([EVENTO.senuelo, redondear(jugador.x), redondear(jugador.y), datos.duracionMs, jugador.personaje]);
+  }
+
+  actualizarSenuelos() {
+    if (this.senuelos.length === 0) return;
+    this.senuelos = this.senuelos.filter((senuelo) => {
+      if (this.reloj < senuelo.hasta) return true;
+      this.explotar(senuelo.x, senuelo.y, HABILIDADES.tipos.senuelo.color);
+      senuelo.sprite.destroy();
+      return false;
+    });
+  }
+
+  objetivoEnemigo(x, y) {
+    for (let i = 0; i < this.senuelos.length; i++) {
+      const senuelo = this.senuelos[i];
+      const dx = senuelo.x - x;
+      const dy = senuelo.y - y;
+      if (dx * dx + dy * dy <= senuelo.radio * senuelo.radio) return senuelo;
+    }
+    return this.jugadorMasCercano(x, y);
   }
 
   alCompletarOleada(numero) {
@@ -586,6 +706,10 @@ export default class GameScene extends Phaser.Scene {
   }
 
   accion(nombre, jugador = this.jugador) {
+    if (nombre === 'reanimar') {
+      this.reanimar(jugador);
+      return;
+    }
     if (this.pausado || this.terminado || this.eligiendo || !jugador.vivo || !this.historia) return;
     if (nombre === 'cambiar') jugador.cambiarArma();
     else if (nombre === 'interactuar') this.historiaCtrl.interactuar(jugador);
@@ -652,7 +776,8 @@ export default class GameScene extends Phaser.Scene {
   }
 
   actualizarVidas() {
-    this.iconosVida.forEach((icono, i) => icono.setVisible(this.jugador.vivo && i < this.jugador.vidas));
+    const j = this.jugador;
+    this.hudVida.actualizar(j.vidas, j.vidasMaximas(), j.armadura, j.armaduraMaxima(), j.vivo);
   }
 
   posicionBorde(jugador) {
@@ -837,7 +962,13 @@ export default class GameScene extends Phaser.Scene {
     const danio = bala.danio * enemigo.factorDanio(bala) * this.factorCrio();
     if (bala.perforacion > 0) bala.perforacion -= 1;
     else bala.desactivar();
-    if (!enemigo.recibirDanio(danio, this.time.now)) return;
+    if (!enemigo.recibirDanio(danio, this.time.now)) {
+      if (bala.empuje > 0 && !enemigo.datos.jefe) {
+        enemigo.x += Math.cos(bala.rotation) * bala.empuje;
+        enemigo.y += Math.sin(bala.rotation) * bala.empuje;
+      }
+      return;
+    }
     this.sumarPuntos(enemigo.datos.puntos);
     this.sonar('explosion');
     if (bala.duenio) {
@@ -869,6 +1000,11 @@ export default class GameScene extends Phaser.Scene {
 
   herirJugador(jugador) {
     if (!jugador.recibirDanio(this.time.now)) return false;
+    const espinas = jugador.modificador('espinas');
+    if (espinas > 0) {
+      this.mostrarOnda(jugador.x, jugador.y, 0x9be22d, 110);
+      this.danioArea(jugador.x, jugador.y, 110, espinas, jugador);
+    }
     if (jugador === this.jugador) this.actualizarVidas();
     this.sacudir(jugador);
     this.sonar('danio', jugador);
@@ -881,6 +1017,11 @@ export default class GameScene extends Phaser.Scene {
     this.explotar(jugador.x, jugador.y, 0x8a1010);
     jugador.caer();
     jugador.escudoImagen.setVisible(false);
+    jugador.barra.actualizar(0, 0, 0, 1, 0, 1, false);
+    jugador.reanimador = null;
+    jugador.progresoReanimar = 0;
+    if (!jugador.marcaCaido) jugador.marcaCaido = this.add.image(0, 0, jugador.texture.key).setDepth(3).setTint(0x777777).setAlpha(0.75);
+    jugador.marcaCaido.setPosition(jugador.x, jugador.y).setRotation(jugador.rotation + Math.PI / 2).setVisible(true);
     if (jugador === this.jugador) this.actualizarVidas();
     if (this.historiaCtrl) this.historiaCtrl.cancelarOferta(jugador);
     if (this.multijugador && this.jugadores.some((otro) => otro.vivo)) {
@@ -971,6 +1112,10 @@ export default class GameScene extends Phaser.Scene {
       if (this.historiaCtrl) this.historiaCtrl.resolverOferta(jugador, { tomar: Boolean(datos.tomar), ranura: datos.ranura });
       return;
     }
+    if (datos.t === 'reanimar') {
+      jugador.entrada.reanimar = true;
+      return;
+    }
     if (datos.t === 'ulti') {
       jugador.entrada.ulti = true;
       return;
@@ -999,6 +1144,8 @@ export default class GameScene extends Phaser.Scene {
     jugador.desconectado = true;
     jugador.escudoImagen.setVisible(false);
     if (jugador.vivo) jugador.caer();
+    if (jugador.marcaCaido) jugador.marcaCaido.setVisible(false);
+    jugador.barra.actualizar(0, 0, 0, 1, 0, 1, false);
     if (this.historiaCtrl) this.historiaCtrl.cancelarOferta(jugador);
     this.anunciar(jugador.nombre + ' salió');
     if (!this.jugadores.some((otro) => otro.vivo)) this.terminarPartida(false);
@@ -1012,8 +1159,9 @@ export default class GameScene extends Phaser.Scene {
     if (jugador.esInvulnerable(ahora)) banderas |= BANDERA_JUGADOR.invulnerable;
     if (jugador.enFuego(this.reloj)) banderas |= BANDERA_JUGADOR.fuego;
     if (jugador.enSprint(this.reloj)) banderas |= BANDERA_JUGADOR.sprint;
+    if (jugador.desconectado) banderas |= BANDERA_JUGADOR.desconectado;
     const velocidad = jugador.local ? jugador.body.velocity : jugador.velocidadRed;
-    return [jugador.id, redondear(jugador.x), redondear(jugador.y), redondear(jugador.rotation * 100), redondear(velocidad.x), redondear(velocidad.y), jugador.vidas, banderas];
+    return [jugador.id, redondear(jugador.x), redondear(jugador.y), redondear(jugador.rotation * 100), redondear(velocidad.x), redondear(velocidad.y), jugador.vidas, banderas, jugador.armadura, jugador.vidasMaximas(), jugador.armaduraMaxima(), Math.round((jugador.progresoReanimar / REANIMAR.duracionMs) * 100)];
   }
 
   datosPersonales(jugador) {
@@ -1028,11 +1176,14 @@ export default class GameScene extends Phaser.Scene {
       vm: jugador.velocidadMovimiento(),
       tp: jugador.teletransportes,
       dedos: jugador.dedos,
-      pv: pasivasEquipadas(jugador.pasivas),
+      pv: pasivasEquipadas(jugador.pasivas).map((id) => [id, jugador.pasivas[id]]),
       armas: jugador.armas.map((ranura) => (ranura ? IDS_ARMA.indexOf(ranura.id) : -1)),
       aa: jugador.armaActual,
       en: Math.floor(jugador.energia),
       ur: redondear(Math.max(0, jugador.ultiListaEn - this.reloj)),
+      ud: redondear(jugador.ultiDuracion),
+      ua: redondear(Math.max(0, jugador.ultiActivaHasta - this.reloj)),
+      uat: redondear(jugador.ultiActivaTotal),
       x: redondear(jugador.x),
       y: redondear(jugador.y)
     };
@@ -1117,6 +1268,7 @@ export default class GameScene extends Phaser.Scene {
       bala.danio = arma.critico > 0 && Math.random() < arma.critico ? arma.danio * 3 : arma.danio;
       bala.perforacion = arma.perforacion;
       bala.explosivo = arma.explosivo;
+      bala.empuje = arma.empuje;
       bala.duenio = jugador;
     }
     if (jugador.local) Sonido.disparo();
@@ -1184,6 +1336,10 @@ export default class GameScene extends Phaser.Scene {
       entrada.ulti = false;
       this.usarUlti(jugador);
     }
+    if (entrada.reanimar) {
+      entrada.reanimar = false;
+      this.reanimar(jugador);
+    }
   }
 
   update(time, delta) {
@@ -1200,10 +1356,15 @@ export default class GameScene extends Phaser.Scene {
       jugador.actualizarEfectos(this.reloj);
       jugador.escudoImagen.setVisible(jugador.vivo && jugador.tieneEscudo(this.reloj)).setPosition(jugador.x, jugador.y);
       actualizarAnillo(this, jugador, jugador.vivo && jugador.enFuego(this.reloj), jugador.x, jugador.y, jugador.radioFuego, time);
+      jugador.barra.actualizar(jugador.x, jugador.y, jugador.vidas, jugador.vidasMaximas(), jugador.armadura, jugador.armaduraMaxima(), jugador.vivo);
     }
     this.energia.actualizar(delta);
     this.ultis.actualizar();
-    this.hudUlti.actualizar(this.jugador.energia, this.jugador.ultiListaEn - this.reloj);
+    this.actualizarSenuelos();
+    this.actualizarReanimaciones(delta, time);
+    this.actualizarVidas();
+    const yo = this.jugador;
+    this.hudUlti.actualizar(yo.energia, yo.ultiListaEn - this.reloj, yo.ultiActivaHasta - this.reloj, yo.ultiActivaTotal, yo.ultiDuracion);
 
     if (this.historiaCtrl) {
       this.historiaCtrl.actualizar(delta);

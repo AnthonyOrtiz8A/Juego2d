@@ -67,6 +67,7 @@ export default class GestorUltis {
     scene.jugadores.forEach((otro) => {
       if (!otro.vivo || otro.desconectado) return;
       otro.curar(datos.curacion);
+      otro.armadura = otro.armaduraMaxima();
       otro.escudoHasta = Math.max(otro.escudoHasta, scene.reloj + datos.escudoMs);
       scene.mostrarOnda(otro.x, otro.y, 0x4cd97b, 120);
     });

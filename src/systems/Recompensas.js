@@ -9,14 +9,25 @@ export function nivelRomano(nivel) {
   return NUMEROS_ROMANOS[nivel] || String(nivel);
 }
 
+function sumarEn(total, mods, factor) {
+  Object.keys(mods || {}).forEach((clave) => {
+    total[clave] = (total[clave] || 0) + mods[clave] * factor;
+  });
+}
+
+export function nivelPasiva(pasivas, id) {
+  return Math.min(LIMITES.nivelPasiva, Math.max(0, Math.floor(Number(pasivas && pasivas[id]) || 0)));
+}
+
 export function modificadoresPasivas(pasivas) {
   const total = {};
   Object.keys(PASIVAS).forEach((id) => {
-    if (!pasivas || !pasivas[id]) return;
-    const mods = PASIVAS[id].mods;
-    Object.keys(mods).forEach((clave) => {
-      total[clave] = (total[clave] || 0) + mods[clave];
-    });
+    const nivel = nivelPasiva(pasivas, id);
+    if (!nivel) return;
+    const pasiva = PASIVAS[id];
+    sumarEn(total, pasiva.mods, 1);
+    sumarEn(total, pasiva.porNivel, nivel - 1);
+    sumarEn(total, pasiva.contra, 1);
   });
   return total;
 }
@@ -38,8 +49,9 @@ export function estadisticasArma(armaId, mejoras, mods = {}) {
     danio: arma.danio * Math.max(0.2, 1 + nivel('danio') * MEJORAS.danio.valor + (mods.danio || 0)),
     balas: arma.balas + nivel('canon') * MEJORAS.canon.valor,
     dispersion: arma.dispersion + (arma.dispersion === 0 && nivel('canon') > 0 ? 0.12 : 0) + (mods.dispersion || 0),
-    velocidad: arma.velocidad,
-    vidaMs: arma.vidaMs * (1 + nivel('alcance') * MEJORAS.alcance.valor),
+    velocidad: arma.velocidad * (1 + nivel('velocidadBala') * MEJORAS.velocidadBala.valor),
+    vidaMs: arma.vidaMs * (1 + nivel('alcance') * MEJORAS.alcance.valor + (mods.alcance || 0)),
+    empuje: nivel('empuje') * MEJORAS.empuje.valor,
     perforacion: arma.perforacion + nivel('calibre') * MEJORAS.calibre.valor + (mods.perforacion || 0),
     critico: nivel('critico') * MEJORAS.critico.valor,
     explosivo: arma.explosivo || 0
@@ -66,7 +78,7 @@ export function generarRecompensa(tipo, jugador) {
     if (libres.length > 0) return { tipo, id: Phaser.Utils.Array.GetRandom(libres) };
   }
   if (tipo === 'pasiva') {
-    const opciones = Object.keys(PASIVAS).filter((id) => !jugador.pasivas[id]);
+    const opciones = Object.keys(PASIVAS).filter((id) => nivelPasiva(jugador.pasivas, id) < LIMITES.nivelPasiva);
     if (opciones.length > 0) return { tipo, id: Phaser.Utils.Array.GetRandom(opciones), nivel: 1 };
   }
   return { tipo: 'mejora', id: Phaser.Utils.Array.GetRandom(Object.keys(MEJORAS)), nivel: 1 };
@@ -87,7 +99,7 @@ export function describirRecompensa(recompensa) {
   }
   if (recompensa.tipo === 'pasiva') {
     const pasiva = PASIVAS[recompensa.id];
-    return { ...base, nombre: pasiva.nombre, texto: '✔ ' + pasiva.bueno + '\n✘ ' + pasiva.malo };
+    return { ...base, nombre: pasiva.nombre + ' ' + nivelRomano(recompensa.nivel || 1), texto: '✔ ' + pasiva.bueno + '\n▲ Por nivel: ' + pasiva.subir + '\n✘ ' + pasiva.malo };
   }
   const mejora = MEJORAS[recompensa.id];
   return { ...base, nombre: mejora.nombre + ' ' + nivelRomano(recompensa.nivel || 1), texto: mejora.texto };
@@ -116,6 +128,7 @@ export function exportarEstado(jugador) {
     pasivas: { ...jugador.pasivas },
     ranuras: { ...jugador.habilidades.ranuras },
     vidas: Math.max(1, jugador.vidas),
+    armadura: jugador.armadura,
     energia: jugador.energia
   };
 }
@@ -140,9 +153,9 @@ export function importarEstado(jugador, estado) {
   });
   let pasivas = 0;
   Object.keys(PASIVAS).forEach((id) => {
-    const tiene = Boolean(estado.pasivas && estado.pasivas[id]) && pasivas < LIMITES.pasivas;
-    jugador.pasivas[id] = tiene ? 1 : 0;
-    if (tiene) pasivas += 1;
+    const nivel = pasivas < LIMITES.pasivas ? nivelPasiva(estado.pasivas, id) : 0;
+    jugador.pasivas[id] = nivel;
+    if (nivel > 0) pasivas += 1;
   });
   if (estado.ranuras) {
     ['E', 'Q', 'C'].forEach((tecla) => {
@@ -152,4 +165,5 @@ export function importarEstado(jugador, estado) {
   }
   jugador.vidas = Math.min(jugador.vidasMaximas(), Math.max(1, Number(estado.vidas) || 1));
   jugador.energia = Math.min(ENERGIA.maximo, Math.max(0, Number(estado.energia) || 0));
+  jugador.armadura = Math.min(jugador.armaduraMaxima(), Math.max(0, Math.floor(Number(estado.armadura) || 0)));
 }

@@ -233,6 +233,17 @@ export function dibujarEstudiante(g) {
   dibujarPersonaje(g, { accesorio: 'mochila', colores: { ropa: ESTUDIANTE.sudadera, ropaSombra: ESTUDIANTE.sudaderaSombra, pelo: ESTUDIANTE.pelo, piel: ESTUDIANTE.piel, extra: ESTUDIANTE.mochila } });
 }
 
+export function dibujarIconoArmadura(g) {
+  g.fillStyle(0x0b2a4a, 1);
+  g.fillRect(2, 1, 16, 11);
+  g.fillTriangle(2, 12, 18, 12, 10, 20);
+  g.fillStyle(0x3ea8ff, 1);
+  g.fillRect(4, 3, 12, 8);
+  g.fillTriangle(4, 11, 16, 11, 10, 17);
+  g.fillStyle(0xbfe9ff, 0.85);
+  g.fillRect(6, 4, 3, 7);
+}
+
 export function dibujarOrbeEnergia(g) {
   for (let i = 4; i >= 1; i--) {
     g.fillStyle(0x3ea8ff, 0.12 * (5 - i));

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { MAZMORRA, COFRES, DEDOS, TIENDA, ARMAS, MEJORAS, PASIVAS, RED, ZONAS_ENEMIGOS, LIMITES } from '../config.js';
 import WaveManager from './WaveManager.js';
-import { generarMazmorra, crearMapaMazmorra, fijarPuertas, rectanguloSala, centroSala, salaEn } from './Mazmorra.js';
+import { generarMazmorra, crearMapaMazmorra, fijarPuertas, rectanguloSala, centroSala, salaEn, SOLIDOS } from './Mazmorra.js';
 import { elegirTipoCofre, generarRecompensa, aplicarRecompensa, describirRecompensa, pasivasEquipadas, mejorasEquipadas, nivelRomano } from './Recompensas.js';
 import { TIPOS_COFRE, IDS_HABILIDAD } from './Protocolo.js';
 
@@ -18,7 +18,7 @@ export function nombreArticulo(tipo, id, nivel = 1) {
   if (tipo === 'arma') return ARMAS[id].nombre;
   if (tipo === 'activa') return describirRecompensa({ tipo, id }).nombre;
   if (tipo === 'mejora') return MEJORAS[id].nombre + ' ' + nivelRomano(nivel);
-  return PASIVAS[id].nombre;
+  return PASIVAS[id].nombre + ' ' + nivelRomano(nivel);
 }
 
 export function catalogoArticulo(tipo) {
@@ -137,6 +137,11 @@ export default class Historia {
     const sprite = this.scene.add.image(x, y, texturaObjeto(tipo, item)).setDepth(3);
     this.scene.tweens.add({ targets: sprite, y: y - 4, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
     this.objetosSuelo.push({ id: this.siguienteId++, tipo, item, nivel: nivel || 1, x, y, sprite });
+  }
+
+  esSolido(x, y) {
+    const tile = this.capa.getTileAtWorldXY(x, y, true);
+    return !tile || tile.collides || SOLIDOS.includes(tile.index);
   }
 
   quitarObjeto(objeto) {
@@ -298,7 +303,7 @@ export default class Historia {
     const actual = {
       arma: jugador.arma,
       ranuras: { ...jugador.habilidades.ranuras },
-      pasivas: pasivasEquipadas(jugador.pasivas),
+      pasivas: pasivasEquipadas(jugador.pasivas).map((id) => [id, jugador.pasivas[id]]),
       mejoras: mejorasEquipadas(jugador.mejoras).map((id) => [id, jugador.mejoras[id]])
     };
     if (jugador.local) scene.selectorRecompensa.mostrar(recompensa, actual, (decision) => this.resolverOferta(jugador, decision));
@@ -418,17 +423,19 @@ export default class Historia {
       this.quitarObjeto(objeto);
       if (actual > 0) scene.avisar(jugador, MEJORAS[objeto.item].nombre + ' sube a nivel ' + nivelRomano(jugador.mejoras[objeto.item]));
     } else {
-      if (jugador.pasivas[objeto.item]) {
-        scene.avisar(jugador, 'Ya tienes esa pasiva');
+      const actual = jugador.pasivas[objeto.item] || 0;
+      if (actual >= LIMITES.nivelPasiva) {
+        scene.avisar(jugador, 'Esa pasiva ya está al nivel máximo');
         return;
       }
-      if (jugador.cantidadPasivas() >= LIMITES.pasivas) {
+      if (actual === 0 && jugador.cantidadPasivas() >= LIMITES.pasivas) {
         this.ofrecerReemplazo(jugador, objeto);
         return;
       }
-      jugador.pasivas[objeto.item] = 1;
+      jugador.pasivas[objeto.item] = Math.min(LIMITES.nivelPasiva, actual + objeto.nivel);
       jugador.ajustarVidas();
       this.quitarObjeto(objeto);
+      if (actual > 0) scene.avisar(jugador, PASIVAS[objeto.item].nombre + ' sube a nivel ' + nivelRomano(jugador.pasivas[objeto.item]));
     }
     scene.alCambiarEquipo(jugador);
     scene.sonar('habilidad', jugador);
@@ -442,9 +449,10 @@ export default class Historia {
       if (!lista.includes(decision.ranura)) return false;
       this.quitarObjeto(objeto);
       if (objeto.tipo === 'pasiva') {
+        const nivelSoltado = jugador.pasivas[decision.ranura];
         jugador.pasivas[decision.ranura] = 0;
-        jugador.pasivas[objeto.item] = 1;
-        this.soltarObjeto('pasiva', decision.ranura, 1, jugador.x, jugador.y + 24);
+        jugador.pasivas[objeto.item] = Math.min(LIMITES.nivelPasiva, objeto.nivel);
+        this.soltarObjeto('pasiva', decision.ranura, nivelSoltado, jugador.x, jugador.y + 24);
         jugador.ajustarVidas();
       } else {
         const nivelSoltado = jugador.mejoras[decision.ranura];
@@ -467,8 +475,8 @@ export default class Historia {
       scene.avisar(jugador, 'Ya tienes esa arma');
       return;
     }
-    if (articulo.tipo === 'pasiva' && jugador.pasivas[articulo.item]) {
-      scene.avisar(jugador, 'Ya tienes esa pasiva');
+    if (articulo.tipo === 'pasiva' && jugador.pasivas[articulo.item] >= LIMITES.nivelPasiva) {
+      scene.avisar(jugador, 'Esa pasiva ya está al nivel máximo');
       return;
     }
     if (articulo.tipo === 'mejora' && jugador.mejoras[articulo.item] >= LIMITES.nivelMejora) {

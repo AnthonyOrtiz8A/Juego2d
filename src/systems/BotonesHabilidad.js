@@ -19,7 +19,7 @@ export default class BotonesHabilidad {
     this.widgets = {};
     this.segundos = {};
     Object.keys(POSICIONES).forEach((tecla) => this.crear(tecla, POSICIONES[tecla].x, POSICIONES[tecla].y));
-    this.textoPc = crearTexto(scene, 16, 92, '', 14, '#9aa4c7').setDepth(PROFUNDIDAD);
+    this.textoPc = crearTexto(scene, 16, 108, '', 14, '#9aa4c7').setDepth(PROFUNDIDAD);
     this.refrescar();
   }
 

@@ -14,6 +14,7 @@ Shooter top-down de arena con oleadas infinitas, hecho con **Phaser 3** y **Vite
 | Habilidad 2 | Q (desde la oleada 4)      | Botón **Q** (a la izquierda del disparo)           |
 | Habilidad 3 | C (desde la oleada 8)      | Botón **C** (arriba a la izquierda del disparo)    |
 | Ulti del personaje | R                      | Botón redondo **ULTI**                             |
+| Reanimar a un amigo caído (multijugador) | V (cerca de él) | Botón **REVIVIR** (aparece cerca de él) |
 | Cambiar arma (historia) | X o rueda del mouse | Botón **ARMA** |
 | Usar / comprar (historia) | F | Botón **F** (aparece cerca de armas y tiendas) |
 
@@ -31,13 +32,17 @@ Empiezas con **Impulso** en la tecla E. Al terminar la oleada 3 se desbloquea la
 | Ráfaga         | 16 balas en todas las direcciones                   | 6 s          |
 | Frenesí        | Triplica la cadencia de disparo durante 4 s         | 14 s         |
 | Congelación    | Enemigos al 30 % de velocidad durante 4 s           | 15 s         |
+| Granada        | Lanza una granada que explota (daño 6) hacia donde apuntas | 7 s    |
+| Primeros auxilios | Recuperas 1 vida y 1 de armadura                 | 25 s         |
+| Salto          | Te teletransportas 220 px hacia donde apuntas (no atraviesa paredes) | 6 s |
+| Señuelo        | Un holograma atrae a los zombies cercanos durante 5 s | 16 s        |
 
 Los enfriamientos se detienen mientras el juego está en pausa o eligiendo poder. Todos los valores se ajustan en `HABILIDADES` dentro de `src/config.js`.
 
 - Los zombies **salen del suelo** dentro de la pantalla (un hoyo, tierra que salta y el zombie creciendo); mientras emergen no hacen daño ni reciben balas. Los jefes tardan más en salir y hacen temblar la cámara.
 - La partida se juega en una ciudad en ruinas (calles, autos quemados, sangre y edificios que hacen de muro en el borde).
 - Tipos de zombie: **normal** (ropa rota, brazos estirados), **rápido** (flaco y pálido, poca vida), **tanque** (enorme, lento y resistente) y **escupidor** (inflado y verde, desde la oleada 3: se mantiene a distancia y te escupe ácido; el Escudo lo bloquea).
-- Tienes 3 vidas y un breve tiempo de invulnerabilidad tras recibir daño.
+- **Vida y armadura:** cada personaje tiene sus propias vidas y armadura. Los golpes quitan primero armadura y luego vida. La armadura se regenera de 1 en 1: el primer punto vuelve tras 10 s sin recibir daño, y cada punto siguiente, tras otros 10 s. Arriba a la izquierda ves tus barras de vida (roja/verde) y armadura (azul), y sobre la cabeza de cada jugador hay una barra de vida y armadura. Tras un golpe tienes un breve tiempo de invulnerabilidad.
 - El récord se guarda en el navegador (`localStorage`).
 - El sonido (generado con WebAudio) está desactivado por defecto; se activa desde el menú.
 
@@ -46,18 +51,18 @@ Los enfriamientos se detienen mientras el juego está en pausa o eligiendo poder
 Antes de jugar eliges entre 8 personajes (en multijugador, cada uno elige el suyo en la sala). Cada uno tiene un aspecto propio, una **pasiva de equipo** y una **ulti**.
 
 - **Pasiva de equipo:** se comparte con todos los integrantes. Personajes distintos suman sus pasivas; repetir personaje no las duplica.
-- **Ulti (R / botón ULTI):** cuesta **100 de energía** y luego tiene un enfriamiento largo. La energía son orbes azules que sueltan los zombies (la mitad de las veces; los jefes sueltan mucha) y se recogen al pasar cerca, igual que los dedos. La barra de energía está abajo al centro.
+- **Ulti (R / botón ULTI):** cuesta **100 de energía** y luego tiene un enfriamiento largo. La energía son orbes azules que sueltan los zombies (la mitad de las veces; los jefes sueltan mucha) y se recogen al pasar cerca, igual que los dedos. La barra de energía está abajo al centro: al usar la ulti se vuelve naranja y **se va vaciando** mientras dura el efecto, y una línea blanca debajo muestra lo que falta de enfriamiento.
 
-| Personaje | Pasiva de equipo | Ulti | Enfriamiento |
-|-----------|------------------|------|--------------|
-| Leo, estudiante | +10 % velocidad | **Lluvia de balas**: 3 s disparando en todas direcciones | 40 s |
-| Sofía, enfermera | +1 vida máxima | **Botiquín**: cura 2 vidas a todos, revive caídos y da escudo 2 s | 55 s |
-| Marco, policía | +10 % de daño | **Torreta**: dispara sola al zombie más cercano 10 s | 45 s |
-| Raúl, bombero | +25 % invulnerabilidad tras un golpe | **Anillo de fuego**: quema a los zombies a tu alrededor 6 s | 45 s |
-| Valeria, mecánica | −15 % enfriamiento de habilidades | **Enjambre de misiles**: 8 misiles explosivos a los más cercanos | 40 s |
-| Diego, deportista | +12 % cadencia | **Sprint imparable**: 5 s rapidísimo, invulnerable y arrollando zombies | 40 s |
-| Ana, científica | +30 % de energía obtenida | **Bomba criogénica**: congela a todos 4 s y reciben +50 % de daño | 50 s |
-| Kenji, militar | Las balas atraviesan 1 zombie más | **Ataque aéreo**: 6 bombazos en zonas marcadas | 50 s |
+| Personaje | Vida / Armadura | Pasiva de equipo | Ulti | Enfriamiento |
+|-----------|-----------------|------------------|------|--------------|
+| Leo, estudiante | 4 / 2 | +10 % velocidad | **Lluvia de balas**: 3 s disparando en todas direcciones | 40 s |
+| Sofía, enfermera | 4 / 2 | +1 vida máxima | **Botiquín**: cura 2 vidas a todos, revive caídos y da escudo 2 s | 55 s |
+| Marco, policía | 3 / 4 | +10 % de daño | **Torreta**: dispara sola al zombie más cercano 10 s | 45 s |
+| Raúl, bombero | 5 / 3 | +25 % invulnerabilidad tras un golpe | **Anillo de fuego**: quema a los zombies a tu alrededor 6 s | 45 s |
+| Valeria, mecánica | 3 / 3 | −15 % enfriamiento de habilidades | **Enjambre de misiles**: 8 misiles explosivos a los más cercanos | 40 s |
+| Diego, deportista | 4 / 1 | +12 % cadencia | **Sprint imparable**: 5 s rapidísimo, invulnerable y arrollando zombies | 40 s |
+| Ana, científica | 3 / 2 | +30 % de energía obtenida | **Bomba criogénica**: congela a todos 4 s y reciben +50 % de daño | 50 s |
+| Kenji, militar | 4 / 3 | Las balas atraviesan 1 zombie más | **Ataque aéreo**: 6 bombazos en zonas marcadas | 50 s |
 
 Todo se ajusta en `PERSONAJES` y `ENERGIA` dentro de `src/config.js`. En el modo historia la energía se conserva entre niveles.
 
@@ -80,24 +85,30 @@ Cruza la ciudad infestada en 3 mundos y 10 niveles, solo o con hasta 3 amigos (e
 - **Armas:** llevas 2 (con munición infinita) y cambias cuando quieras. Hay 7: pistola, revólver, escopeta, subfusil, ametralladora, rifle (perforante) y lanzagranadas (daño en área). Las armas nuevas caen al suelo (de cofres o al cambiar) y se recogen con **F**; si tienes las dos ranuras llenas, sueltas la que tienes en la mano.
 - **Dedos de zombie:** algunos zombies los sueltan al morir (los grandes y los jefes, más). Se recogen al pasar cerca y cada jugador tiene los suyos. En las tiendas compras armas, habilidades activas, pasivas y mejoras que aún no tienes.
 - **Cofres:** cada tipo tiene su diseño: azul con rayo (**habilidad activa**, eliges en E, Q o C), caja militar verde (**arma**), madera con corazón (**pasiva**) y morado con flecha (**mejora**). Las armas, pasivas y mejoras caen al suelo y se recogen con **F**.
-- **Límites:** 2 armas, **3 pasivas** y **3 mejoras**. Si recoges una mejora que ya tienes, **sube de nivel** (hasta V). Si estás al máximo, eliges cuál soltar y queda en el suelo (las mejoras conservan su nivel).
-- **Pasivas con ventaja y desventaja:**
+- **Límites:** 2 armas, **3 pasivas** y **3 mejoras**. Si recoges una pasiva o mejora que ya tienes, **sube de nivel** (pasivas hasta III, mejoras hasta V). Si estás al máximo, eliges cuál soltar y queda en el suelo conservando su nivel.
+- **Pasivas con ventaja y desventaja:** al subir de nivel mejora la ventaja; la desventaja se queda igual.
 
-| Pasiva | Ventaja | Desventaja |
-|--------|---------|------------|
-| Vitalidad | +2 vidas máximas | −15 % velocidad |
-| Agilidad | +25 % velocidad | −1 vida máxima |
-| Vampiro | Cada 15 bajas recuperas 1 vida | −20 % de daño |
-| Blindaje | +80 % invulnerabilidad tras un golpe | −15 % cadencia |
-| Recarga rápida | −35 % enfriamiento de habilidades | Zombies 10 % más rápidos |
-| Regeneración | +1 vida al despejar cada sala | −15 % de daño |
-| Furia | +70 % de daño con 1 vida | −1 vida máxima |
-| Codicia | Doble de dedos | Zombies con 20 % más vida |
-| Cañón de cristal | +50 % de daño | −50 % invulnerabilidad |
-| Gatillo loco | +40 % cadencia | Mucha menos precisión |
-| Imán | Atraes los dedos desde lejos | −10 % velocidad |
+| Pasiva | Ventaja (nivel I) | Cada nivel más | Desventaja |
+|--------|-------------------|----------------|------------|
+| Vitalidad | +2 vidas máximas | +1 vida | −15 % velocidad |
+| Agilidad | +25 % velocidad | +10 % velocidad | −1 vida máxima |
+| Vampiro | Cada 15 bajas recuperas 1 vida | 3 bajas menos | −20 % de daño |
+| Blindaje | +80 % invulnerabilidad tras un golpe | +30 % | −15 % cadencia |
+| Recarga rápida | −35 % enfriamiento de habilidades | −10 % | Zombies 10 % más rápidos |
+| Regeneración | +1 vida al despejar cada sala | +1 vida | −15 % de daño |
+| Furia | +70 % de daño con 1 vida | +30 % | −1 vida máxima |
+| Codicia | Doble de dedos | +50 % dedos | Zombies con 20 % más vida |
+| Cañón de cristal | +50 % de daño | +20 % | −50 % invulnerabilidad |
+| Gatillo loco | +40 % cadencia | +15 % | Mucha menos precisión |
+| Imán | Atraes dedos y energía desde lejos | Más alcance | −10 % velocidad |
+| Coraza | +2 de armadura máxima | +1 armadura | −10 % velocidad |
+| Nanobots | Armadura se regenera 40 % más rápido | +20 % | −1 vida máxima |
+| Recolector | +50 % de energía para la ulti | +25 % | −10 % de daño |
+| Francotirador | +40 % alcance y +20 % daño | +10 % daño | −20 % cadencia |
+| Espinas | Al recibir un golpe dañas (3) a los zombies cercanos | +2 de daño | −1 de armadura máxima |
+| Adrenalina | +40 % velocidad 3 s después de un golpe | +15 % | −30 % invulnerabilidad |
 
-- **Mejoras (niveles I a V):** Munición pesada (daño), Gatillo ligero (cadencia), Calibre perforante, Cañón múltiple (balas extra), Cañón largo (alcance) y Punto débil (golpes críticos x3).
+- **Mejoras (niveles I a V):** Munición pesada (daño), Gatillo ligero (cadencia), Calibre perforante, Cañón múltiple (balas extra), Cañón largo (alcance), Punto débil (golpes críticos x3), Balas rápidas (velocidad de bala), Retroceso (las balas empujan a los zombies), Placas de blindaje (+1 armadura máxima) y Batería extra (más energía para la ulti).
 - **Enemigos propios de cada zona**, además de los normales:
 
 | Enemigo | Comportamiento | Zonas |
@@ -124,7 +135,7 @@ Cooperativo: todos contra las mismas oleadas, con puntaje de equipo.
 - Funciona con WebRTC (PeerJS): los dispositivos se conectan directamente entre sí. Para encontrarse usan el servidor público gratuito de PeerJS, así que se necesita internet al conectar; en la misma WiFi el tráfico del juego va directo entre los dispositivos.
 - El anfitrión ejecuta la partida: si cierra la pestaña o la deja en segundo plano, el juego se detiene para todos.
 - Para reducir el retraso, cada jugador mueve y dispara a su personaje al instante en su propia pantalla (predicción local) y el anfitrión solo corrige cuando hace falta. Las posiciones viajan por un canal rápido sin orden y cada jugador recibe solo lo que está cerca de él.
-- Si un jugador pierde todas sus vidas queda caído y revive con 1 vida al empezar la siguiente oleada. La partida termina cuando caen todos.
+- Si un jugador pierde todas sus vidas queda **caído** en el suelo (gris, con un círculo verde). Un compañero puede **reanimarlo durante la oleada**: se acerca, pulsa **V** (o el botón **REVIVIR** en el celular) y se queda cerca 3 segundos; si se aleja o cae, se interrumpe. El reanimado vuelve con 2 vidas. Si nadie lo reanima, revive con 1 vida al empezar la siguiente oleada. La partida termina cuando caen todos.
 - En multijugador no hay pausa ni selector de poderes: al desbloquear Q (oleada 4) y C (oleada 8) cada jugador recibe una habilidad al azar.
 - Al terminar, el anfitrión puede volver a la sala con los mismos jugadores.
 

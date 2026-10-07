@@ -1,15 +1,27 @@
 import Phaser from 'phaser';
-import { JUGADOR, HABILIDADES, PASIVAS, MEJORAS, MUNICION, ENERGIA } from '../config.js';
+import { JUGADOR, HABILIDADES, PASIVAS, MEJORAS, MUNICION, ENERGIA, ARMADURA, PERSONAJES } from '../config.js';
 import { estadisticasArma, modificadoresPasivas, pasivasEquipadas, mejorasEquipadas } from '../systems/Recompensas.js';
 import { personajeValido, sumarModificadores } from '../systems/Personajes.js';
 
 const COLOR_SPRINT = 0xfff27a;
+const DURACION_ADRENALINA_MS = 3000;
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, opciones = {}) {
     const personaje = personajeValido(opciones.personaje);
     super(scene, x, y, 'jugador-' + personaje);
     this.personaje = personaje;
+    this.vidasBase = PERSONAJES[personaje].vidas;
+    this.armaduraBase = PERSONAJES[personaje].armadura;
+    this.armadura = 0;
+    this.ultimoDanio = 0;
+    this.ultimaRegen = 0;
+    this.adrenalinaHasta = 0;
+    this.reanimador = null;
+    this.progresoReanimar = 0;
+    this.marcaCaido = null;
+    this.ultiActivaHasta = 0;
+    this.ultiActivaTotal = 1;
     this.modsEquipo = {};
     this.energia = 0;
     this.ultiListaEn = 0;
@@ -47,7 +59,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.etiqueta = null;
     this.vivo = true;
     this.desconectado = false;
-    this.vidas = JUGADOR.vidas;
+    this.vidas = this.vidasBase;
     this.invulnerableHasta = 0;
     this.proximoDisparo = 0;
     this.dashHasta = 0;
@@ -78,7 +90,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   sumarEnergia(cantidad) {
-    this.energia = Math.min(ENERGIA.maximo, this.energia + cantidad * (1 + this.modificador('energia')));
+    const bateria = (this.mejoras.bateria || 0) * MEJORAS.bateria.valor;
+    this.energia = Math.min(ENERGIA.maximo, this.energia + cantidad * (1 + this.modificador('energia') + bateria));
   }
 
   enSprint(reloj) {
@@ -102,16 +115,38 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   velocidadMovimiento() {
-    const sprint = this.enSprint(this.scene.reloj) ? this.multiplicadorSprint : 1;
-    return JUGADOR.velocidad * Math.max(0.4, 1 + this.modificador('velocidad')) * sprint;
+    const reloj = this.scene.reloj;
+    const sprint = this.enSprint(reloj) ? this.multiplicadorSprint : 1;
+    const adrenalina = reloj < this.adrenalinaHasta ? 1 + this.modificador('adrenalina') : 1;
+    return JUGADOR.velocidad * Math.max(0.4, 1 + this.modificador('velocidad')) * sprint * adrenalina;
   }
 
   vidasMaximas() {
-    return Math.max(1, JUGADOR.vidas + this.modificador('vidas'));
+    return Math.max(1, this.vidasBase + this.modificador('vidas'));
+  }
+
+  armaduraMaxima() {
+    return Math.max(0, this.armaduraBase + this.modificador('armadura') + (this.mejoras.placas || 0) * MEJORAS.placas.valor);
   }
 
   ajustarVidas() {
     this.vidas = Math.min(this.vidas, this.vidasMaximas());
+    this.armadura = Math.min(this.armadura, this.armaduraMaxima());
+  }
+
+  regenerarArmadura(reloj) {
+    if (!this.vivo) return;
+    const maxima = this.armaduraMaxima();
+    if (this.armadura >= maxima) {
+      this.armadura = maxima;
+      return;
+    }
+    const factor = 1 + this.modificador('regenArmadura');
+    const desdeRegen = this.ultimaRegen > this.ultimoDanio;
+    const espera = (desdeRegen ? ARMADURA.intervaloMs : ARMADURA.retrasoMs) / factor;
+    if (reloj - Math.max(this.ultimoDanio, this.ultimaRegen) < espera) return;
+    this.armadura += 1;
+    this.ultimaRegen = reloj;
   }
 
   curar(cantidad) {
@@ -186,6 +221,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
   actualizarEfectos(reloj) {
     this.enFrenesi = reloj < this.frenesiHasta;
+    this.regenerarArmadura(reloj);
     let efecto = '';
     if (this.enSprint(reloj)) efecto = 'sprint';
     else if (this.enFrenesi) efecto = 'frenesi';
@@ -209,7 +245,11 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
 
   recibirDanio(tiempo) {
     if (!this.vivo || this.esInvulnerable(tiempo)) return false;
-    this.vidas -= 1;
+    if (this.armadura > 0) this.armadura -= 1;
+    else this.vidas -= 1;
+    const reloj = this.scene.reloj;
+    this.ultimoDanio = reloj;
+    if (this.modificador('adrenalina') > 0) this.adrenalinaHasta = reloj + DURACION_ADRENALINA_MS;
     this.invulnerableHasta = tiempo + JUGADOR.invulnerabilidadMs * Math.max(0.3, 1 + this.modificador('invulnerabilidad'));
     return true;
   }
@@ -224,6 +264,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.desconectado) return;
     this.vivo = true;
     this.vidas = vidas;
+    this.armadura = 0;
+    this.ultimoDanio = this.scene.reloj;
+    this.reanimador = null;
+    this.progresoReanimar = 0;
     this.teletransportes += 1;
     this.invulnerableHasta = tiempo + JUGADOR.invulnerabilidadMs;
     this.enableBody(true, x, y, true, true);
@@ -233,7 +277,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   preUpdate(time, delta) {
     super.preUpdate(time, delta);
     this.alpha = this.esInvulnerable(time) && Math.floor(time / 80) % 2 === 0 ? 0.3 : 1;
-    if (this.etiqueta && this.vivo) this.etiqueta.setPosition(this.x, this.y - 30);
+    if (this.etiqueta && this.vivo) this.etiqueta.setPosition(this.x, this.y - 46);
   }
 
   apuntarA(x, y) {

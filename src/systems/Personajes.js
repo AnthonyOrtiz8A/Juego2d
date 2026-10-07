@@ -34,6 +34,21 @@ export function sumarModificadores(a, b) {
   return total;
 }
 
+export function duracionUlti(ulti) {
+  switch (ulti.id) {
+    case 'lluvia':
+      return ulti.rafagas * ulti.intervaloMs;
+    case 'botiquin':
+      return ulti.escudoMs;
+    case 'misiles':
+      return ulti.misiles * 70 + 900;
+    case 'bombardeo':
+      return ulti.avisoMs + ulti.bombas * ulti.separacionMs;
+    default:
+      return ulti.duracionMs || 1000;
+  }
+}
+
 export function textoPasivasEquipo(ids) {
   return personajesUnicos(ids).map((id) => PERSONAJES[id].pasiva.texto.replace('Equipo: ', '').split('\n').join(' ')).join(' · ');
 }

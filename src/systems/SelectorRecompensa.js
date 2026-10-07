@@ -51,7 +51,7 @@ export default class SelectorRecompensa {
     const filaBotones = arriba + ALTO_PANEL - 90;
     if (recompensa.tipo === 'pasiva' || recompensa.tipo === 'mejora') {
       const lista = recompensa.tipo === 'pasiva'
-        ? (actual.pasivas || []).map((id) => [id, PASIVAS[id] ? PASIVAS[id].nombre : id])
+        ? (actual.pasivas || []).map(([id, nivel]) => [id, PASIVAS[id] ? PASIVAS[id].nombre + ' ' + nivelRomano(nivel) : id])
         : (actual.mejoras || []).map(([id, nivel]) => [id, MEJORAS[id] ? MEJORAS[id].nombre + ' ' + nivelRomano(nivel) : id]);
       this.agregar(crearTexto(scene, cx, arriba + 172, 'Llevas el máximo. ¿Cuál sueltas?', 14, '#9aa4c7').setOrigin(0.5));
       lista.forEach(([id, nombre], i) => {

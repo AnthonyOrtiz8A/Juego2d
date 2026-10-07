@@ -121,7 +121,7 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     if (time >= this.proximoObjetivo) {
       this.proximoObjetivo = time + RED.reapuntadoEnemigoMs;
-      const cercano = this.scene.jugadorMasCercano(this.x, this.y);
+      const cercano = this.scene.objetivoEnemigo(this.x, this.y);
       if (cercano) this.objetivo = cercano;
     }
 

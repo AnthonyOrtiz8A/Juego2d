@@ -10,6 +10,7 @@ export default class Bullet extends Phaser.Physics.Arcade.Sprite {
     this.danio = BALA.danio;
     this.perforacion = 0;
     this.explosivo = 0;
+    this.empuje = 0;
     this.duenio = null;
     this.ultimoGolpe = null;
   }
@@ -19,6 +20,7 @@ export default class Bullet extends Phaser.Physics.Arcade.Sprite {
     this.danio = BALA.danio;
     this.perforacion = 0;
     this.explosivo = 0;
+    this.empuje = 0;
     this.duenio = null;
     this.ultimoGolpe = null;
     this.rotation = angulo;

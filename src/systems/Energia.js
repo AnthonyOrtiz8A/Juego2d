@@ -54,7 +54,7 @@ export default class Energia {
         orbe.setActive(false).setVisible(false);
         continue;
       }
-      if (distancia <= ENERGIA.radioIman) {
+      if (distancia <= ENERGIA.radioIman * (1 + jugador.modificador('iman'))) {
         const paso = Math.min(distancia, ENERGIA.velocidadIman * segundos);
         orbe.x += (dx / distancia) * paso;
         orbe.y += (dy / distancia) * paso;

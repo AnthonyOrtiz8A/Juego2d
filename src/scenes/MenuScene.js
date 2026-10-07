@@ -84,7 +84,7 @@ export default class MenuScene extends Phaser.Scene {
     if (esDispositivoTactil(this.game)) {
       return 'Mover: joystick (lado izquierdo)   ·   Disparar: lado derecho (apunta solo)\nHabilidades: botones E, Q y C   ·   Ulti: botón ULTI   ·   Historia: ARMA y F';
     }
-    return 'Mover: WASD   ·   Apuntar: mouse   ·   Disparar: clic   ·   Pausa: P o Esc\nHabilidades: E, Q y C   ·   Ulti: R   ·   Cambiar arma: X o rueda   ·   Usar: F';
+    return 'Mover: WASD   ·   Apuntar: mouse   ·   Disparar: clic   ·   Pausa: P o Esc\nHabilidades: E, Q y C   ·   Ulti: R   ·   Reanimar: V   ·   Arma: X o rueda   ·   Usar: F';
   }
 
   jugar() {
