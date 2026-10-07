@@ -1,22 +1,23 @@
 import Phaser from 'phaser';
-import { MAZMORRA, COFRES, DEDOS, TIENDA, ARMAS, MEJORAS, PASIVAS, RED } from '../config.js';
+import { MAZMORRA, COFRES, DEDOS, TIENDA, ARMAS, MEJORAS, PASIVAS, RED, ZONAS_ENEMIGOS, LIMITES } from '../config.js';
 import WaveManager from './WaveManager.js';
 import { generarMazmorra, crearMapaMazmorra, fijarPuertas, rectanguloSala, centroSala, salaEn } from './Mazmorra.js';
-import { elegirTipoCofre, generarRecompensa, aplicarRecompensa, describirRecompensa } from './Recompensas.js';
-import { TIPOS_COFRE, IDS_ARMA, IDS_HABILIDAD } from './Protocolo.js';
+import { elegirTipoCofre, generarRecompensa, aplicarRecompensa, describirRecompensa, pasivasEquipadas, mejorasEquipadas, nivelRomano } from './Recompensas.js';
+import { TIPOS_COFRE, IDS_HABILIDAD } from './Protocolo.js';
 
 export const TIPOS_ARTICULO = ['arma', 'activa', 'mejora', 'pasiva'];
-const RADIO_ARMA_SUELO = 40;
+export const TIPOS_OBJETO = ['arma', 'pasiva', 'mejora'];
+const RADIO_OBJETO_SUELO = 40;
 const PROBABILIDAD_COFRE_SALA = 0.3;
 
 function redondear(valor) {
   return Math.round(valor);
 }
 
-export function nombreArticulo(tipo, id) {
+export function nombreArticulo(tipo, id, nivel = 1) {
   if (tipo === 'arma') return ARMAS[id].nombre;
   if (tipo === 'activa') return describirRecompensa({ tipo, id }).nombre;
-  if (tipo === 'mejora') return MEJORAS[id].nombre;
+  if (tipo === 'mejora') return MEJORAS[id].nombre + ' ' + nivelRomano(nivel);
   return PASIVAS[id].nombre;
 }
 
@@ -25,6 +26,15 @@ export function catalogoArticulo(tipo) {
   if (tipo === 'activa') return IDS_HABILIDAD;
   if (tipo === 'mejora') return Object.keys(MEJORAS);
   return Object.keys(PASIVAS);
+}
+
+export function texturaObjeto(tipo, item) {
+  return tipo === 'arma' ? 'arma-' + item : 'objeto-' + tipo;
+}
+
+export function textoObjeto(tipo, item, nivel) {
+  const etiqueta = tipo === 'pasiva' ? ' (pasiva)' : tipo === 'mejora' ? ' (mejora)' : '';
+  return 'F: Tomar ' + nombreArticulo(tipo, item, nivel) + etiqueta;
 }
 
 export default class Historia {
@@ -40,7 +50,7 @@ export default class Historia {
     this.salaActiva = null;
     this.salasLimpias = 0;
     this.cofres = [];
-    this.armasSuelo = [];
+    this.objetosSuelo = [];
     this.articulos = [];
     this.portal = null;
     this.ofertas = new Map();
@@ -112,9 +122,8 @@ export default class Historia {
   }
 
   crearIconoArticulo(tipo, id, x, y) {
-    if (tipo === 'arma') return this.scene.add.image(x, y, 'arma-' + id).setDepth(5);
-    const color = COFRES.tipos[tipo].color;
-    return this.scene.add.image(x, y, 'cofre-' + tipo).setDepth(5).setScale(0.6).setTint(color);
+    if (tipo === 'activa') return this.scene.add.image(x, y, 'cofre-activa').setDepth(5).setScale(0.6);
+    return this.scene.add.image(x, y, texturaObjeto(tipo, id)).setDepth(5);
   }
 
   crearPortal(sala) {
@@ -124,16 +133,21 @@ export default class Historia {
     this.portal = { x: centro.x, y: centro.y, sprite };
   }
 
-  soltarArma(armaId, x, y) {
-    const sprite = this.scene.add.image(x, y, 'arma-' + armaId).setDepth(3);
+  soltarObjeto(tipo, item, nivel, x, y) {
+    const sprite = this.scene.add.image(x, y, texturaObjeto(tipo, item)).setDepth(3);
     this.scene.tweens.add({ targets: sprite, y: y - 4, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-    this.armasSuelo.push({ id: this.siguienteId++, arma: armaId, x, y, sprite });
+    this.objetosSuelo.push({ id: this.siguienteId++, tipo, item, nivel: nivel || 1, x, y, sprite });
+  }
+
+  quitarObjeto(objeto) {
+    this.objetosSuelo = this.objetosSuelo.filter((otro) => otro !== objeto);
+    objeto.sprite.destroy();
   }
 
   soltarDedos(enemigo) {
     const tipo = enemigo.tipo;
     if (Math.random() >= (DEDOS.probabilidad[tipo] || 0)) return;
-    const cantidad = DEDOS.cantidad[tipo] || 1;
+    const cantidad = Math.round((DEDOS.cantidad[tipo] || 1) * (1 + this.scene.modificadorEquipo('dedos')));
     for (let i = 0; i < cantidad; i++) {
       const dedo = this.dedos.getFirstDead(false);
       if (!dedo) return;
@@ -142,10 +156,6 @@ export default class Historia {
       dedo.setPosition(enemigo.x + Math.cos(angulo) * distancia, enemigo.y + Math.sin(angulo) * distancia).setActive(true).setVisible(true).setAngle(Math.random() * 360);
       dedo.expira = this.scene.reloj + DEDOS.vidaMs;
     }
-  }
-
-  dentroDeSala(sala, jugador) {
-    return rectanguloSala(sala, 1).contains(jugador.x, jugador.y);
   }
 
   revisarSalas() {
@@ -177,7 +187,9 @@ export default class Historia {
       inicio: this.nivel.inicio + this.salasLimpias,
       total,
       jefe,
-      multiplicadorCantidad: scene.multiplicadorCantidad * 0.6
+      multiplicadorCantidad: scene.multiplicadorCantidad * 0.6,
+      especiales: ZONAS_ENEMIGOS.tipos[this.nivel.tema] || [],
+      probabilidadEspecial: ZONAS_ENEMIGOS.probabilidad
     });
     scene.oleadas.iniciar();
   }
@@ -193,6 +205,13 @@ export default class Historia {
     scene.oleadas.detener();
     scene.oleadas = null;
     scene.revivirCaidos();
+    scene.jugadores.forEach((jugador) => {
+      const regeneracion = jugador.modificador('regeneracion');
+      if (jugador.vivo && regeneracion > 0) {
+        jugador.curar(regeneracion);
+        scene.alCambiarEquipo(jugador);
+      }
+    });
     if (sala.tipo === 'jefe') {
       this.crearCofresEn(sala, scene.jugadores.filter((jugador) => !jugador.desconectado).length + COFRES.extra);
       this.crearPortal(sala);
@@ -261,8 +280,8 @@ export default class Historia {
     scene.explotar(cofre.x, cofre.y, COFRES.tipos[cofre.tipo].color);
     scene.sonar('habilidad', jugador);
     cofre.recompensa = generarRecompensa(cofre.tipo, jugador);
-    if (cofre.recompensa.tipo === 'arma') {
-      this.soltarArma(cofre.recompensa.id, cofre.x, cofre.y + 36);
+    if (TIPOS_OBJETO.includes(cofre.recompensa.tipo)) {
+      this.soltarObjeto(cofre.recompensa.tipo, cofre.recompensa.id, cofre.recompensa.nivel, cofre.x, cofre.y + 36);
       cofre.resuelto = true;
       return;
     }
@@ -276,7 +295,12 @@ export default class Historia {
   ofrecer(jugador, recompensa, alDecidir) {
     const scene = this.scene;
     this.ofertas.set(jugador.id, { recompensa, alDecidir });
-    const actual = { arma: jugador.arma, ranuras: { ...jugador.habilidades.ranuras } };
+    const actual = {
+      arma: jugador.arma,
+      ranuras: { ...jugador.habilidades.ranuras },
+      pasivas: pasivasEquipadas(jugador.pasivas),
+      mejoras: mejorasEquipadas(jugador.mejoras).map((id) => [id, jugador.mejoras[id]])
+    };
     if (jugador.local) scene.selectorRecompensa.mostrar(recompensa, actual, (decision) => this.resolverOferta(jugador, decision));
     else scene.red.enviar(jugador.id, { t: 'cofre', r: recompensa, actual });
   }
@@ -317,7 +341,7 @@ export default class Historia {
         this.scene.alCambiarEquipo(jugador);
         return;
       }
-      if (distancia <= DEDOS.radioIman) {
+      if (distancia <= DEDOS.radioIman * (1 + jugador.modificador('iman'))) {
         const paso = Math.min(distancia, DEDOS.velocidadIman * segundos);
         dedo.x += (dx / distancia) * paso;
         dedo.y += (dy / distancia) * paso;
@@ -348,11 +372,11 @@ export default class Historia {
   interactuable(jugador) {
     let mejor = null;
     let mejorDistancia = TIENDA.radioInteraccion;
-    this.armasSuelo.forEach((arma) => {
-      const distancia = Phaser.Math.Distance.Between(jugador.x, jugador.y, arma.x, arma.y);
-      if (distancia <= Math.min(mejorDistancia, RADIO_ARMA_SUELO)) {
+    this.objetosSuelo.forEach((objeto) => {
+      const distancia = Phaser.Math.Distance.Between(jugador.x, jugador.y, objeto.x, objeto.y);
+      if (distancia <= Math.min(mejorDistancia, RADIO_OBJETO_SUELO)) {
         mejorDistancia = distancia;
-        mejor = { tipo: 'suelo', objeto: arma };
+        mejor = { tipo: 'suelo', objeto };
       }
     });
     this.articulos.forEach((articulo) => {
@@ -370,17 +394,67 @@ export default class Historia {
     if (!jugador.vivo || this.ofertas.has(jugador.id)) return;
     const objetivo = this.interactuable(jugador);
     if (!objetivo) return;
-    if (objetivo.tipo === 'suelo') {
-      const arma = objetivo.objeto;
-      this.armasSuelo = this.armasSuelo.filter((otra) => otra !== arma);
-      arma.sprite.destroy();
-      const soltada = jugador.equiparArma(arma.arma);
-      if (soltada) this.soltarArma(soltada, jugador.x, jugador.y + 24);
-      this.scene.alCambiarEquipo(jugador);
-      this.scene.sonar('habilidad', jugador);
-      return;
+    if (objetivo.tipo === 'suelo') this.recoger(jugador, objetivo.objeto);
+    else this.comprar(jugador, objetivo.objeto);
+  }
+
+  recoger(jugador, objeto) {
+    const scene = this.scene;
+    if (objeto.tipo === 'arma') {
+      this.quitarObjeto(objeto);
+      const soltada = jugador.equiparArma(objeto.item);
+      if (soltada) this.soltarObjeto('arma', soltada, 1, jugador.x, jugador.y + 24);
+    } else if (objeto.tipo === 'mejora') {
+      const actual = jugador.mejoras[objeto.item] || 0;
+      if (actual >= LIMITES.nivelMejora) {
+        scene.avisar(jugador, 'Esa mejora ya está al nivel máximo');
+        return;
+      }
+      if (actual === 0 && jugador.cantidadMejoras() >= LIMITES.mejoras) {
+        this.ofrecerReemplazo(jugador, objeto);
+        return;
+      }
+      jugador.mejoras[objeto.item] = Math.min(LIMITES.nivelMejora, actual + objeto.nivel);
+      this.quitarObjeto(objeto);
+      if (actual > 0) scene.avisar(jugador, MEJORAS[objeto.item].nombre + ' sube a nivel ' + nivelRomano(jugador.mejoras[objeto.item]));
+    } else {
+      if (jugador.pasivas[objeto.item]) {
+        scene.avisar(jugador, 'Ya tienes esa pasiva');
+        return;
+      }
+      if (jugador.cantidadPasivas() >= LIMITES.pasivas) {
+        this.ofrecerReemplazo(jugador, objeto);
+        return;
+      }
+      jugador.pasivas[objeto.item] = 1;
+      jugador.ajustarVidas();
+      this.quitarObjeto(objeto);
     }
-    this.comprar(jugador, objetivo.objeto);
+    scene.alCambiarEquipo(jugador);
+    scene.sonar('habilidad', jugador);
+  }
+
+  ofrecerReemplazo(jugador, objeto) {
+    const recompensa = { tipo: objeto.tipo, id: objeto.item, nivel: objeto.nivel };
+    this.ofrecer(jugador, recompensa, (decision) => {
+      if (!decision.tomar || !this.objetosSuelo.includes(objeto)) return false;
+      const lista = objeto.tipo === 'pasiva' ? pasivasEquipadas(jugador.pasivas) : mejorasEquipadas(jugador.mejoras);
+      if (!lista.includes(decision.ranura)) return false;
+      this.quitarObjeto(objeto);
+      if (objeto.tipo === 'pasiva') {
+        jugador.pasivas[decision.ranura] = 0;
+        jugador.pasivas[objeto.item] = 1;
+        this.soltarObjeto('pasiva', decision.ranura, 1, jugador.x, jugador.y + 24);
+        jugador.ajustarVidas();
+      } else {
+        const nivelSoltado = jugador.mejoras[decision.ranura];
+        jugador.mejoras[decision.ranura] = 0;
+        jugador.mejoras[objeto.item] = objeto.nivel;
+        this.soltarObjeto('mejora', decision.ranura, nivelSoltado, jugador.x, jugador.y + 24);
+      }
+      this.scene.sonar('habilidad', jugador);
+      return true;
+    });
   }
 
   comprar(jugador, articulo) {
@@ -393,8 +467,12 @@ export default class Historia {
       scene.avisar(jugador, 'Ya tienes esa arma');
       return;
     }
-    if (articulo.tipo === 'pasiva' && jugador.pasivas[articulo.item] >= PASIVAS[articulo.item].maximo) {
-      scene.avisar(jugador, 'Ya tienes el máximo');
+    if (articulo.tipo === 'pasiva' && jugador.pasivas[articulo.item]) {
+      scene.avisar(jugador, 'Ya tienes esa pasiva');
+      return;
+    }
+    if (articulo.tipo === 'mejora' && jugador.mejoras[articulo.item] >= LIMITES.nivelMejora) {
+      scene.avisar(jugador, 'Esa mejora ya está al nivel máximo');
       return;
     }
     if (articulo.tipo === 'activa' && Object.values(jugador.habilidades.ranuras).includes(articulo.item)) {
@@ -419,9 +497,10 @@ export default class Historia {
     vender();
     if (articulo.tipo === 'arma') {
       const soltada = jugador.equiparArma(articulo.item);
-      if (soltada) this.soltarArma(soltada, jugador.x, jugador.y + 24);
+      if (soltada) this.soltarObjeto('arma', soltada, 1, jugador.x, jugador.y + 24);
     } else {
-      aplicarRecompensa(jugador, { tipo: articulo.tipo, id: articulo.item }, { tomar: true });
+      this.soltarObjeto(articulo.tipo, articulo.item, 1, articulo.x, articulo.y);
+      scene.avisar(jugador, 'Recógelo con F');
     }
     scene.alCambiarEquipo(jugador);
   }
@@ -436,7 +515,7 @@ export default class Historia {
       c: this.cofres.map((cofre) => [cofre.id, TIPOS_COFRE.indexOf(cofre.tipo), redondear(cofre.x), redondear(cofre.y), cofre.abierto ? 1 : 0, Math.min(100, redondear((cofre.progreso / COFRES.aperturaMs) * 100))]),
       pt: this.portal ? [redondear(this.portal.x), redondear(this.portal.y)] : null,
       dd: dedos,
-      ws: this.armasSuelo.map((arma) => [arma.id, IDS_ARMA.indexOf(arma.arma), redondear(arma.x), redondear(arma.y)]),
+      ws: this.objetosSuelo.map((objeto) => [objeto.id, TIPOS_OBJETO.indexOf(objeto.tipo), catalogoArticulo(objeto.tipo).indexOf(objeto.item), objeto.nivel, redondear(objeto.x), redondear(objeto.y)]),
       tn: this.articulos.filter((articulo) => !articulo.vendido).map((articulo) => [articulo.id, TIPOS_ARTICULO.indexOf(articulo.tipo), catalogoArticulo(articulo.tipo).indexOf(articulo.item), redondear(articulo.x), redondear(articulo.y), articulo.precio])
     };
   }
@@ -445,4 +524,3 @@ export default class Historia {
     return { ancho: this.anchoMundo, alto: this.altoMundo };
   }
 }
-

@@ -1,20 +1,47 @@
 import Phaser from 'phaser';
-import { ARMAS, PASIVAS, MEJORAS, COFRES, HABILIDADES } from '../config.js';
+import { ARMAS, PASIVAS, MEJORAS, COFRES, HABILIDADES, LIMITES } from '../config.js';
 import { DESCRIPCIONES } from './Habilidades.js';
 
 export const TIPOS_COFRE = Object.keys(COFRES.tipos);
+const NUMEROS_ROMANOS = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
 
-export function estadisticasArma(armaId, mejoras) {
+export function nivelRomano(nivel) {
+  return NUMEROS_ROMANOS[nivel] || String(nivel);
+}
+
+export function modificadoresPasivas(pasivas) {
+  const total = {};
+  Object.keys(PASIVAS).forEach((id) => {
+    if (!pasivas || !pasivas[id]) return;
+    const mods = PASIVAS[id].mods;
+    Object.keys(mods).forEach((clave) => {
+      total[clave] = (total[clave] || 0) + mods[clave];
+    });
+  });
+  return total;
+}
+
+export function pasivasEquipadas(pasivas) {
+  return Object.keys(PASIVAS).filter((id) => pasivas && pasivas[id]);
+}
+
+export function mejorasEquipadas(mejoras) {
+  return Object.keys(MEJORAS).filter((id) => mejoras && mejoras[id] > 0);
+}
+
+export function estadisticasArma(armaId, mejoras, mods = {}) {
   const arma = ARMAS[armaId] || ARMAS.pistola;
   const nivel = (id) => Number(mejoras && mejoras[id]) || 0;
+  const multiplicadorCadencia = Math.max(0.3, 1 + nivel('cadencia') * MEJORAS.cadencia.valor + (mods.cadencia || 0));
   return {
-    cadenciaMs: arma.cadenciaMs / (1 + nivel('cadencia') * MEJORAS.cadencia.valor),
-    danio: arma.danio * (1 + nivel('danio') * MEJORAS.danio.valor),
+    cadenciaMs: arma.cadenciaMs / multiplicadorCadencia,
+    danio: arma.danio * Math.max(0.2, 1 + nivel('danio') * MEJORAS.danio.valor + (mods.danio || 0)),
     balas: arma.balas + nivel('canon') * MEJORAS.canon.valor,
-    dispersion: arma.dispersion + (arma.dispersion === 0 && nivel('canon') > 0 ? 0.12 : 0),
+    dispersion: arma.dispersion + (arma.dispersion === 0 && nivel('canon') > 0 ? 0.12 : 0) + (mods.dispersion || 0),
     velocidad: arma.velocidad,
     vidaMs: arma.vidaMs * (1 + nivel('alcance') * MEJORAS.alcance.valor),
     perforacion: arma.perforacion + nivel('calibre') * MEJORAS.calibre.valor,
+    critico: nivel('critico') * MEJORAS.critico.valor,
     explosivo: arma.explosivo || 0
   };
 }
@@ -39,10 +66,10 @@ export function generarRecompensa(tipo, jugador) {
     if (libres.length > 0) return { tipo, id: Phaser.Utils.Array.GetRandom(libres) };
   }
   if (tipo === 'pasiva') {
-    const opciones = Object.keys(PASIVAS).filter((id) => (jugador.pasivas[id] || 0) < PASIVAS[id].maximo);
-    if (opciones.length > 0) return { tipo, id: Phaser.Utils.Array.GetRandom(opciones) };
+    const opciones = Object.keys(PASIVAS).filter((id) => !jugador.pasivas[id]);
+    if (opciones.length > 0) return { tipo, id: Phaser.Utils.Array.GetRandom(opciones), nivel: 1 };
   }
-  return { tipo: 'mejora', id: Phaser.Utils.Array.GetRandom(Object.keys(MEJORAS)) };
+  return { tipo: 'mejora', id: Phaser.Utils.Array.GetRandom(Object.keys(MEJORAS)), nivel: 1 };
 }
 
 export function describirRecompensa(recompensa) {
@@ -58,28 +85,26 @@ export function describirRecompensa(recompensa) {
     const descripcion = DESCRIPCIONES[recompensa.id];
     return { ...base, nombre: descripcion.nombre, texto: descripcion.texto + '\nEnfriamiento: ' + HABILIDADES.tipos[recompensa.id].enfriamientoMs / 1000 + ' s' };
   }
-  if (recompensa.tipo === 'pasiva') return { ...base, nombre: PASIVAS[recompensa.id].nombre, texto: PASIVAS[recompensa.id].texto };
-  return { ...base, nombre: MEJORAS[recompensa.id].nombre, texto: MEJORAS[recompensa.id].texto };
+  if (recompensa.tipo === 'pasiva') {
+    const pasiva = PASIVAS[recompensa.id];
+    return { ...base, nombre: pasiva.nombre, texto: '✔ ' + pasiva.bueno + '\n✘ ' + pasiva.malo };
+  }
+  const mejora = MEJORAS[recompensa.id];
+  return { ...base, nombre: mejora.nombre + ' ' + nivelRomano(recompensa.nivel || 1), texto: mejora.texto };
 }
 
 export function recompensaValida(recompensa) {
   if (!recompensa || typeof recompensa.id !== 'string') return false;
   const catalogo = { arma: ARMAS, activa: HABILIDADES.tipos, pasiva: PASIVAS, mejora: MEJORAS }[recompensa.tipo];
-  return Boolean(catalogo && Object.prototype.hasOwnProperty.call(catalogo, recompensa.id));
+  if (!catalogo || !Object.prototype.hasOwnProperty.call(catalogo, recompensa.id)) return false;
+  if (recompensa.nivel !== undefined && !(Number.isInteger(recompensa.nivel) && recompensa.nivel >= 1 && recompensa.nivel <= LIMITES.nivelMejora)) return false;
+  return true;
 }
 
 export function aplicarRecompensa(jugador, recompensa, decision) {
   if (!decision || !decision.tomar) return;
-  if (recompensa.tipo === 'arma') {
-    jugador.arma = recompensa.id;
-  } else if (recompensa.tipo === 'activa') {
-    if (['E', 'Q', 'C'].includes(decision.ranura)) jugador.habilidades.asignar(decision.ranura, recompensa.id);
-  } else if (recompensa.tipo === 'pasiva') {
-    jugador.pasivas[recompensa.id] = (jugador.pasivas[recompensa.id] || 0) + 1;
-    if (recompensa.id === 'vitalidad') jugador.curar(1);
-  } else {
-    jugador.mejoras[recompensa.id] = (jugador.mejoras[recompensa.id] || 0) + 1;
-  }
+  if (recompensa.tipo === 'arma') jugador.arma = recompensa.id;
+  else if (recompensa.tipo === 'activa' && ['E', 'Q', 'C'].includes(decision.ranura)) jugador.habilidades.asignar(decision.ranura, recompensa.id);
 }
 
 export function exportarEstado(jugador) {
@@ -106,11 +131,17 @@ export function importarEstado(jugador, estado) {
     jugador.armaActual = estado.armaActual === 1 && jugador.armas[1] ? 1 : 0;
   }
   jugador.dedos = Math.max(0, Number(estado.dedos) || 0);
+  let mejoras = 0;
   Object.keys(MEJORAS).forEach((id) => {
-    jugador.mejoras[id] = Number(estado.mejoras && estado.mejoras[id]) || 0;
+    const nivel = Math.min(LIMITES.nivelMejora, Math.max(0, Math.floor(Number(estado.mejoras && estado.mejoras[id]) || 0)));
+    jugador.mejoras[id] = nivel > 0 && mejoras < LIMITES.mejoras ? nivel : 0;
+    if (jugador.mejoras[id] > 0) mejoras += 1;
   });
+  let pasivas = 0;
   Object.keys(PASIVAS).forEach((id) => {
-    jugador.pasivas[id] = Number(estado.pasivas && estado.pasivas[id]) || 0;
+    const tiene = Boolean(estado.pasivas && estado.pasivas[id]) && pasivas < LIMITES.pasivas;
+    jugador.pasivas[id] = tiene ? 1 : 0;
+    if (tiene) pasivas += 1;
   });
   if (estado.ranuras) {
     ['E', 'Q', 'C'].forEach((tecla) => {

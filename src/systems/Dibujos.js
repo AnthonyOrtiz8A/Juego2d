@@ -39,8 +39,64 @@ export const ZOMBIES = {
   jefe: {
     tamano: 150, hombros: 47, profundidad: 50, cabeza: 16, alcance: 52, grosorBrazo: 17,
     piel: 0x6b4a6e, pielOscura: 0x4a3150, ropa: 0x1e1420, ropaOscura: 0x120b14, torsoDesnudo: true, escupidor: true, jefe: 2
+  },
+  perro: { tamano: 44, perro: true, piel: 0x6b5a45, pielOscura: 0x4a3d2e },
+  policia: {
+    tamano: 48, hombros: 13, profundidad: 14, cabeza: 7, alcance: 10, grosorBrazo: 4.5,
+    piel: 0x8aa074, pielOscura: 0x63774f, ropa: 0x1f2f5a, ropaOscura: 0x14203d, casco: 0x14203d, escudo: true
+  },
+  chillona: {
+    tamano: 42, hombros: 11, profundidad: 11, cabeza: 6.5, alcance: 14, grosorBrazo: 3.2,
+    piel: 0xc9d1b0, pielOscura: 0x9aa58a, ropa: 0xbfe3ff, ropaOscura: 0x8fb8d0, pelo: 0x2a1f1a, grita: true
+  },
+  hinchado: {
+    tamano: 56, hombros: 17, profundidad: 28, cabeza: 7.5, alcance: 12, grosorBrazo: 5,
+    piel: 0x9cb35a, pielOscura: 0x758a3e, ropa: 0x6a6f3a, ropaOscura: 0x4a4f28, torsoDesnudo: true, hinchado: true
+  },
+  obrero: {
+    tamano: 46, hombros: 14, profundidad: 15, cabeza: 7, alcance: 17, grosorBrazo: 5,
+    piel: 0x7fa36b, pielOscura: 0x5a7a4a, ropa: 0xe07a1a, ropaOscura: 0xb35a10, casco: 0xf2c12e, chaleco: true
+  },
+  ahogado: {
+    tamano: 46, hombros: 13, profundidad: 14, cabeza: 7, alcance: 18, grosorBrazo: 4.5,
+    piel: 0x7da3a8, pielOscura: 0x58797d, ropa: 0x2f4a5a, ropaOscura: 0x1f3340, algas: true
+  },
+  soldado: {
+    tamano: 52, hombros: 13, profundidad: 15, cabeza: 7, alcance: 12, grosorBrazo: 4.5,
+    piel: 0x7f9a6b, pielOscura: 0x5a7a4a, ropa: 0x4b5a33, ropaOscura: 0x3a4627, casco: 0x3a4627, rifle: true, camuflaje: true
   }
 };
+
+function dibujarPerro(g, z) {
+  const c = z.tamano / 2;
+  g.fillStyle(0x000000, 0.3);
+  g.fillEllipse(c + 2, c + 3, 34, 18);
+  g.fillStyle(z.pielOscura, 1);
+  g.fillRect(c - 12, c - 9, 4, 5);
+  g.fillRect(c - 12, c + 4, 4, 5);
+  g.fillRect(c + 6, c - 9, 4, 5);
+  g.fillRect(c + 6, c + 4, 4, 5);
+  g.lineStyle(3, z.pielOscura, 1);
+  g.lineBetween(c - 15, c, c - 21, c + 4);
+  g.fillStyle(z.piel, 1);
+  g.fillEllipse(c - 2, c, 28, 13);
+  g.lineStyle(1, z.pielOscura, 1);
+  for (let i = -6; i <= 4; i += 3) g.lineBetween(c + i, c - 5, c + i, c + 5);
+  g.fillStyle(0x6b0f0f, 0.9);
+  g.fillCircle(c - 4, c + 2, 3);
+  g.fillStyle(z.piel, 1);
+  g.fillCircle(c + 13, c, 6);
+  g.fillEllipse(c + 18, c, 7, 5);
+  g.fillStyle(z.pielOscura, 1);
+  g.fillTriangle(c + 9, c - 5, c + 13, c - 10, c + 15, c - 4);
+  g.fillTriangle(c + 9, c + 5, c + 13, c + 10, c + 15, c + 4);
+  g.fillStyle(0xff3b2f, 1);
+  g.fillCircle(c + 16, c - 2.5, 1.3);
+  g.fillCircle(c + 16, c + 2.5, 1.3);
+  g.fillStyle(0xe8dcc0, 1);
+  g.fillRect(c + 20, c - 1.5, 2, 1);
+  g.fillRect(c + 20, c + 0.5, 2, 1);
+}
 
 export function dibujarEstudiante(g) {
   const e = ESTUDIANTE;
@@ -84,6 +140,10 @@ export function dibujarEstudiante(g) {
 
 export function dibujarZombie(g, tipo) {
   const z = ZOMBIES[tipo];
+  if (z.perro) {
+    dibujarPerro(g, z);
+    return;
+  }
   const c = z.tamano / 2;
   const h = z.hombros;
 
@@ -127,6 +187,38 @@ export function dibujarZombie(g, tipo) {
     g.fillCircle(c - 5, c + 3, 1.8);
   }
 
+  if (z.chaleco) {
+    g.fillStyle(0xf2f2a0, 1);
+    g.fillRect(c - z.profundidad * 0.3, c - h * 0.9, 2.5, h * 1.8);
+    g.fillRect(c + z.profundidad * 0.1, c - h * 0.9, 2.5, h * 1.8);
+  }
+  if (z.camuflaje) {
+    g.fillStyle(0x2a331c, 1);
+    g.fillCircle(c - 3, c - h * 0.4, 2.5);
+    g.fillCircle(c + 2, c + h * 0.5, 3);
+    g.fillCircle(c - 4, c + h * 0.15, 2);
+    g.fillStyle(0x6b5a3a, 1);
+    g.fillCircle(c + 1, c - h * 0.65, 2);
+  }
+  if (z.algas) {
+    g.lineStyle(1.5, 0x3a7a3a, 1);
+    g.lineBetween(c - 5, c - h * 0.8, c - 1, c - h * 0.2);
+    g.lineBetween(c - 1, c - h * 0.2, c - 4, c + h * 0.3);
+    g.lineBetween(c + 2, c + h * 0.2, c - 2, c + h * 0.8);
+  }
+  if (z.hinchado) {
+    g.fillStyle(z.pielOscura, 1);
+    g.fillEllipse(c + 2, c, z.profundidad * 0.7, h * 1.3);
+    g.fillStyle(0xe8f070, 1);
+    [[-6, -8, 3], [4, 6, 3.5], [-3, 9, 2.5], [6, -5, 2.5], [-8, 2, 2]].forEach(([dx, dy, r]) => g.fillCircle(c + dx, c + dy, r));
+  }
+  if (z.rifle) {
+    g.fillStyle(0x1b1b1b, 1);
+    g.fillRect(c + 2, c - 2, z.alcance + 12, 4);
+    g.fillStyle(0x5a3d22, 1);
+    g.fillRect(c - 2, c - 2.5, 6, 5);
+  }
+
   if (z.jefe) {
     g.fillStyle(0xe8dcc0, 1);
     for (let i = -2; i <= 2; i++) {
@@ -152,9 +244,36 @@ export function dibujarZombie(g, tipo) {
     g.fillStyle(0xd98a96, 1);
     g.fillCircle(c - 2, c + z.cabeza * 0.3, z.cabeza * 0.3);
   }
+  if (z.pelo) {
+    g.fillStyle(z.pelo, 1);
+    g.fillEllipse(c - 3, c, z.cabeza * 1.4, z.cabeza * 2.3);
+    g.lineStyle(1.5, z.pelo, 1);
+    g.lineBetween(c - 4, c - 4, c - 10, c - 7);
+    g.lineBetween(c - 4, c + 4, c - 10, c + 8);
+  }
+  if (z.casco) {
+    g.fillStyle(z.casco, 1);
+    g.fillEllipse(c - 0.5, c, z.cabeza * 1.7, z.cabeza * 2.2);
+    g.lineStyle(1, 0x000000, 0.35);
+    g.strokeEllipse(c - 0.5, c, z.cabeza * 1.7, z.cabeza * 2.2);
+  }
   g.fillStyle(OJO_ZOMBIE, 1);
   g.fillCircle(c + 1 + z.cabeza * 0.6, c - z.cabeza * 0.38, Math.max(1.1, z.cabeza * 0.17));
   g.fillCircle(c + 1 + z.cabeza * 0.6, c + z.cabeza * 0.38, Math.max(1.1, z.cabeza * 0.17));
+
+  if (z.grita) {
+    g.fillStyle(0x1a0a0a, 1);
+    g.fillCircle(c + z.cabeza * 0.85, c, z.cabeza * 0.45);
+    g.lineStyle(1.5, 0xff6bd6, 0.8);
+    g.strokeCircle(c + z.cabeza * 1.3, c, z.cabeza * 0.9);
+  }
+  if (z.escudo) {
+    g.fillStyle(0x9fb6d0, 0.85);
+    g.fillRoundedRect(c + z.alcance + 2, c - h - 3, 6, h * 2 + 6, 2);
+    g.lineStyle(1.5, 0x3a4a5e, 1);
+    g.strokeRoundedRect(c + z.alcance + 2, c - h - 3, 6, h * 2 + 6, 2);
+    g.lineBetween(c + z.alcance + 5, c - h, c + z.alcance + 5, c + h);
+  }
 
   if (z.jefe === 2) {
     g.fillStyle(0xffd23f, 1);
@@ -1430,6 +1549,36 @@ export function dibujarPedestal(g) {
   g.fillRect(4, 8, 36, 6);
   g.lineStyle(1, 0x4a463f, 1);
   g.strokeRect(4.5, 8.5, 35, 31);
+}
+
+export function dibujarObjetoPasiva(g) {
+  g.fillStyle(0x000000, 0.35);
+  g.fillCircle(17, 18, 13);
+  g.fillStyle(0x1f4a2e, 1);
+  g.fillCircle(15, 15, 13);
+  g.lineStyle(2, 0xf0c94a, 1);
+  g.strokeCircle(15, 15, 13);
+  g.fillStyle(0x4cd97b, 1);
+  g.fillCircle(11.5, 12.5, 4);
+  g.fillCircle(18.5, 12.5, 4);
+  g.fillTriangle(7.5, 13.5, 22.5, 13.5, 15, 22);
+  g.fillStyle(0xffffff, 0.6);
+  g.fillCircle(10, 8, 2);
+}
+
+export function dibujarObjetoMejora(g) {
+  g.fillStyle(0x000000, 0.35);
+  g.fillTriangle(17, 3, 31, 17, 17, 31);
+  g.fillTriangle(17, 3, 3, 17, 17, 31);
+  g.fillStyle(0x4a2a6b, 1);
+  g.fillTriangle(15, 1, 29, 15, 15, 29);
+  g.fillTriangle(15, 1, 1, 15, 15, 29);
+  g.lineStyle(2, 0xf0c94a, 1);
+  g.strokeTriangle(15, 1, 29, 15, 15, 29);
+  g.strokeTriangle(15, 1, 1, 15, 15, 29);
+  g.fillStyle(0xb36bff, 1);
+  g.fillTriangle(15, 7, 9, 14, 21, 14);
+  g.fillRect(12.5, 14, 5, 8);
 }
 
 export function dibujarDedo(g) {

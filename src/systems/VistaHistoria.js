@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
-import { MAZMORRA, COFRES, TIENDA, ARMAS } from '../config.js';
+import { MAZMORRA, COFRES, TIENDA } from '../config.js';
 import { generarMazmorra, crearMapaMazmorra, fijarPuertas, SOLIDOS } from './Mazmorra.js';
-import { TIPOS_COFRE, IDS_ARMA } from './Protocolo.js';
-import { TIPOS_ARTICULO, catalogoArticulo, nombreArticulo } from './Historia.js';
+import { TIPOS_COFRE } from './Protocolo.js';
+import { TIPOS_ARTICULO, TIPOS_OBJETO, catalogoArticulo, nombreArticulo, texturaObjeto, textoObjeto } from './Historia.js';
 
-const RADIO_ARMA_SUELO = 40;
+const RADIO_OBJETO_SUELO = 40;
 
 export default class VistaHistoria {
   constructor(scene, semilla, nivel) {
@@ -15,7 +15,7 @@ export default class VistaHistoria {
     this.altoMundo = this.mazmorra.alto * MAZMORRA.tile;
     this.salaCerrada = -1;
     this.cofres = new Map();
-    this.armasSuelo = new Map();
+    this.objetosSuelo = new Map();
     this.articulos = new Map();
     this.portal = null;
     this.dedos = [];
@@ -36,7 +36,7 @@ export default class VistaHistoria {
     this.aplicarCofres(datos.c || []);
     this.aplicarPortal(datos.pt);
     this.aplicarDedos(datos.dd || []);
-    this.aplicarArmas(datos.ws || []);
+    this.aplicarObjetos(datos.ws || []);
     this.aplicarArticulos(datos.tn || []);
   }
 
@@ -111,12 +111,13 @@ export default class VistaHistoria {
     });
   }
 
-  aplicarArmas(lista) {
-    this.sincronizar(this.armasSuelo, lista, ([, armaIndice, x, y]) => {
-      const arma = IDS_ARMA[armaIndice] || 'pistola';
-      const sprite = this.scene.add.image(x, y, 'arma-' + arma).setDepth(3);
+  aplicarObjetos(lista) {
+    this.sincronizar(this.objetosSuelo, lista, ([, tipoIndice, itemIndice, nivel, x, y]) => {
+      const tipo = TIPOS_OBJETO[tipoIndice] || 'arma';
+      const item = catalogoArticulo(tipo)[itemIndice] || catalogoArticulo(tipo)[0];
+      const sprite = this.scene.add.image(x, y, texturaObjeto(tipo, item)).setDepth(3);
       this.scene.tweens.add({ targets: sprite, y: y - 4, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-      return { arma, x, y, partes: [sprite] };
+      return { tipo, item, nivel, x, y, partes: [sprite] };
     });
   }
 
@@ -125,9 +126,9 @@ export default class VistaHistoria {
       const tipo = TIPOS_ARTICULO[tipoIndice] || 'mejora';
       const item = catalogoArticulo(tipo)[itemIndice] || catalogoArticulo(tipo)[0];
       const pedestal = this.scene.add.image(x, y, 'pedestal').setDepth(3);
-      const icono = tipo === 'arma'
-        ? this.scene.add.image(x, y - 8, 'arma-' + item).setDepth(5)
-        : this.scene.add.image(x, y - 8, 'cofre-' + tipo).setDepth(5).setScale(0.6).setTint(COFRES.tipos[tipo].color);
+      const icono = tipo === 'activa'
+        ? this.scene.add.image(x, y - 8, 'cofre-activa').setDepth(5).setScale(0.6)
+        : this.scene.add.image(x, y - 8, texturaObjeto(tipo, item)).setDepth(5);
       const etiqueta = this.scene.add.text(x, y + 28, precio + ' dedos', { fontFamily: 'monospace', fontSize: '12px', fontStyle: 'bold', color: '#e8f070', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5).setDepth(6);
       return { tipo, item, precio, x, y, partes: [pedestal, icono, etiqueta] };
     });
@@ -136,11 +137,11 @@ export default class VistaHistoria {
   interactuable(x, y) {
     let mejor = null;
     let mejorDistancia = TIENDA.radioInteraccion;
-    this.armasSuelo.forEach((arma) => {
-      const distancia = Phaser.Math.Distance.Between(x, y, arma.x, arma.y);
-      if (distancia <= Math.min(mejorDistancia, RADIO_ARMA_SUELO)) {
+    this.objetosSuelo.forEach((objeto) => {
+      const distancia = Phaser.Math.Distance.Between(x, y, objeto.x, objeto.y);
+      if (distancia <= Math.min(mejorDistancia, RADIO_OBJETO_SUELO)) {
         mejorDistancia = distancia;
-        mejor = { texto: 'F: Tomar ' + ARMAS[arma.arma].nombre, x: arma.x, y: arma.y };
+        mejor = { texto: textoObjeto(objeto.tipo, objeto.item, objeto.nivel), x: objeto.x, y: objeto.y };
       }
     });
     this.articulos.forEach((articulo) => {

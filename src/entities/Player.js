@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { JUGADOR, HABILIDADES, PASIVAS, MEJORAS, MUNICION } from '../config.js';
-import { estadisticasArma } from '../systems/Recompensas.js';
+import { estadisticasArma, modificadoresPasivas, pasivasEquipadas, mejorasEquipadas } from '../systems/Recompensas.js';
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, opciones = {}) {
@@ -59,12 +59,32 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.setVelocity(dx * velocidad, dy * velocidad);
   }
 
+  modificadores() {
+    return modificadoresPasivas(this.pasivas);
+  }
+
+  modificador(clave) {
+    return this.modificadores()[clave] || 0;
+  }
+
+  cantidadPasivas() {
+    return pasivasEquipadas(this.pasivas).length;
+  }
+
+  cantidadMejoras() {
+    return mejorasEquipadas(this.mejoras).length;
+  }
+
   velocidadMovimiento() {
-    return JUGADOR.velocidad * (1 + this.pasivas.agilidad * PASIVAS.agilidad.valor);
+    return JUGADOR.velocidad * Math.max(0.4, 1 + this.modificador('velocidad'));
   }
 
   vidasMaximas() {
-    return JUGADOR.vidas + this.pasivas.vitalidad;
+    return Math.max(1, JUGADOR.vidas + this.modificador('vidas'));
+  }
+
+  ajustarVidas() {
+    this.vidas = Math.min(this.vidas, this.vidasMaximas());
   }
 
   curar(cantidad) {
@@ -72,7 +92,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   multiplicadorEnfriamiento() {
-    return Math.pow(PASIVAS.recarga.valor, this.pasivas.recarga);
+    return Math.max(0.3, 1 + this.modificador('enfriamiento'));
   }
 
   get arma() {
@@ -84,7 +104,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   datosArma() {
-    return estadisticasArma(this.arma, this.mejoras);
+    const mods = this.modificadores();
+    const datos = estadisticasArma(this.arma, this.mejoras, mods);
+    if (mods.furia && this.vidas === 1) datos.danio *= 1 + mods.furia;
+    return datos;
   }
 
   ranuraActual() {
@@ -115,9 +138,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   registrarBaja() {
-    if (this.pasivas.vampiro === 0) return;
+    const necesarias = this.modificador('vampiro');
+    if (!necesarias) return;
     this.bajas += 1;
-    const necesarias = Math.round(PASIVAS.vampiro.bajas / this.pasivas.vampiro);
     if (this.bajas >= necesarias) {
       this.bajas = 0;
       this.curar(1);
@@ -156,7 +179,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   recibirDanio(tiempo) {
     if (!this.vivo || this.esInvulnerable(tiempo)) return false;
     this.vidas -= 1;
-    this.invulnerableHasta = tiempo + JUGADOR.invulnerabilidadMs * (1 + this.pasivas.blindaje * PASIVAS.blindaje.valor);
+    this.invulnerableHasta = tiempo + JUGADOR.invulnerabilidadMs * Math.max(0.3, 1 + this.modificador('invulnerabilidad'));
     return true;
   }
 

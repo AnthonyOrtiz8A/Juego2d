@@ -19,6 +19,9 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.estadoJefe = 'perseguir';
     this.finFase = 0;
     this.anguloEmbestida = 0;
+    this.impulsoHasta = 0;
+    this.proximoGrito = 0;
+    this.rafagaRestante = 0;
     this.setDepth(5);
   }
 
@@ -42,7 +45,21 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.congelado = false;
     this.sentido = Math.random() < 0.5 ? -1 : 1;
     if (datos.cadenciaMs) this.proximoDisparo = this.scene.reloj + Phaser.Math.Between(500, datos.cadenciaMs);
+    this.impulsoHasta = 0;
+    this.rafagaRestante = 0;
+    this.proximoGrito = datos.grito ? this.scene.reloj + Phaser.Math.Between(1000, datos.grito.cadenciaMs) : 0;
     this.clearTint();
+  }
+
+  factorDanio(bala) {
+    let factor = this.datos.armadura || 1;
+    if (this.datos.escudoFrontal && bala && bala.body) {
+      const velocidad = bala.body.velocity;
+      const rapidez = velocidad.length() || 1;
+      const frontal = (velocidad.x * Math.cos(this.rotation) + velocidad.y * Math.sin(this.rotation)) / rapidez < -0.5;
+      if (frontal) factor *= this.datos.escudoFrontal;
+    }
+    return factor;
   }
 
   recibirDanio(cantidad, tiempo) {
@@ -80,13 +97,22 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
       else this.clearTint();
     }
 
-    const velocidad = lento ? this.velocidad * congelacion.factorVelocidad : this.velocidad;
+    let velocidad = lento ? this.velocidad * congelacion.factorVelocidad : this.velocidad;
+    if (this.datos.grito) {
+      if (this.scene.reloj < this.impulsoHasta) velocidad *= this.datos.grito.multiplicador;
+      if (this.scene.reloj >= this.proximoGrito) {
+        this.proximoGrito = this.scene.reloj + this.datos.grito.cadenciaMs;
+        this.scene.gritar(this);
+      }
+    } else if (this.scene.reloj < this.impulsoHasta) {
+      velocidad *= ENEMIGOS.tipos.chillona.grito.multiplicador;
+    }
     const haciaJugador = Math.atan2(this.objetivo.y - this.y, this.objetivo.x - this.x);
 
     if (this.datos.jefe) this.comportamientoJefe(haciaJugador, velocidad, lento);
     else if (this.datos.distancia) this.comportamientoTirador(haciaJugador, velocidad, lento);
     else {
-      const angulo = haciaJugador + Math.sin(time * 0.003 + this.fase) * ENEMIGOS.zigzag;
+      const angulo = haciaJugador + Math.sin(time * 0.003 + this.fase) * (this.datos.zigzag || ENEMIGOS.zigzag);
       this.body.velocity.set(Math.cos(angulo) * velocidad, Math.sin(angulo) * velocidad);
       this.rotation = angulo;
     }
@@ -177,9 +203,13 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     const escena = this.scene;
     if (escena.reloj < this.proximoDisparo) return;
-    if (distancia > datos.distancia + datos.alcanceExtra) return;
-    if (!escena.enVistaDe(this.objetivo, this.x, this.y)) return;
-    this.proximoDisparo = escena.reloj + datos.cadenciaMs * (lento ? 2 : 1);
-    escena.dispararEnemigo(this.x, this.y, haciaJugador);
+    if (this.rafagaRestante === 0) {
+      if (distancia > datos.distancia + datos.alcanceExtra) return;
+      if (!escena.enVistaDe(this.objetivo, this.x, this.y)) return;
+      this.rafagaRestante = datos.rafaga || 1;
+    }
+    this.rafagaRestante -= 1;
+    escena.dispararEnemigo(this.x, this.y, haciaJugador + (datos.rafaga ? (Math.random() - 0.5) * 0.12 : 0));
+    this.proximoDisparo = escena.reloj + (this.rafagaRestante > 0 ? datos.separacionRafagaMs : datos.cadenciaMs * (lento ? 2 : 1));
   }
 }

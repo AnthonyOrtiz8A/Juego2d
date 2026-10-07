@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
-import { ANCHO, ALTO, MUNDO, JUGADOR, BALA, EFECTOS, TACTIL, HABILIDADES, RED, ARMAS, ENEMIGOS, PASIVAS } from '../config.js';
+import { ANCHO, ALTO, MUNDO, JUGADOR, BALA, EFECTOS, TACTIL, HABILIDADES, RED, ARMAS, ENEMIGOS, PASIVAS, MEJORAS } from '../config.js';
 import Sonido from '../systems/Sonido.js';
 import TouchControls from '../systems/TouchControls.js';
 import BotonesHabilidad from '../systems/BotonesHabilidad.js';
 import SelectorRecompensa from '../systems/SelectorRecompensa.js';
-import { estadisticasArma, recompensaValida } from '../systems/Recompensas.js';
+import { estadisticasArma, recompensaValida, modificadoresPasivas } from '../systems/Recompensas.js';
 import { nivelHistoria } from '../systems/Mapas.js';
 import VistaHistoria from '../systems/VistaHistoria.js';
 import HudArmas from '../systems/HudArmas.js';
@@ -116,7 +116,7 @@ export default class ClienteScene extends Phaser.Scene {
     this.acidoVista = [];
     this.balasPropias = [];
     this.enemigosVista = [];
-    this.datosYo = { arma: 'pistola', mejoras: {}, vm: JUGADOR.velocidad, armas: [{ id: 'pistola' }, null], aa: 0, dedos: 0 };
+    this.datosYo = { arma: 'pistola', mejoras: {}, vm: JUGADOR.velocidad, armas: [{ id: 'pistola' }, null], aa: 0, dedos: 0, pasivas: {} };
     this.prediccion = { x: MUNDO.ancho / 2, y: MUNDO.alto / 2, vx: 0, vy: 0, tp: -1, dashHasta: 0, dvx: 0, dvy: 0 };
     this.miIndice = Math.max(0, this.red.jugadores.findIndex((jugador) => jugador.id === this.red.miId));
 
@@ -207,7 +207,7 @@ export default class ClienteScene extends Phaser.Scene {
     this.textoOleada = crearTexto(this, ANCHO / 2, 10, '', 22).setOrigin(0.5, 0).setDepth(PROFUNDIDAD_HUD);
     this.textoEquipo = crearTexto(this, ANCHO - 16, 10, '', 14).setOrigin(1, 0).setDepth(PROFUNDIDAD_HUD).setAlign('right');
     this.iconosVida = [];
-    const maximo = JUGADOR.vidas + PASIVAS.vitalidad.maximo;
+    const maximo = JUGADOR.vidas + 3;
     for (let i = 0; i < maximo; i++) {
       this.iconosVida.push(this.add.image(26 + i * 24, 76, 'corazon').setScrollFactor(0).setDepth(PROFUNDIDAD_HUD).setVisible(false));
     }
@@ -229,6 +229,8 @@ export default class ClienteScene extends Phaser.Scene {
     const actual = datos.actual || {};
     const ranuras = actual.ranuras || {};
     const seguro = {
+      pasivas: (Array.isArray(actual.pasivas) ? actual.pasivas : []).filter((id) => PASIVAS[id]),
+      mejoras: (Array.isArray(actual.mejoras) ? actual.mejoras : []).filter((dato) => Array.isArray(dato) && MEJORAS[dato[0]] && Number.isInteger(dato[1])),
       arma: ARMAS[actual.arma] ? actual.arma : 'pistola',
       ranuras: {
         E: HABILIDADES.tipos[ranuras.E] ? ranuras.E : null,
@@ -340,6 +342,10 @@ export default class ClienteScene extends Phaser.Scene {
     this.datosYo.mejoras = yo.m || {};
     this.datosYo.vm = Number.isFinite(yo.vm) ? yo.vm : JUGADOR.velocidad;
     this.datosYo.dedos = yo.dedos || 0;
+    this.datosYo.pasivas = {};
+    (Array.isArray(yo.pv) ? yo.pv : []).forEach((id) => {
+      if (PASIVAS[id]) this.datosYo.pasivas[id] = 1;
+    });
     this.datosYo.aa = yo.aa === 1 ? 1 : 0;
     if (Array.isArray(yo.armas)) {
       this.datosYo.armas = yo.armas.map((indice) => (IDS_ARMA[indice] ? { id: IDS_ARMA[indice] } : null));
@@ -436,7 +442,7 @@ export default class ClienteScene extends Phaser.Scene {
 
   actualizarHistoria(time) {
     if (!this.vista) return;
-    this.hudArmas.actualizar(this.datosYo.armas, this.datosYo.aa, this.datosYo.dedos);
+    this.hudArmas.actualizar(this.datosYo.armas, this.datosYo.aa, this.datosYo.dedos, this.datosYo.pasivas, this.datosYo.mejoras);
     const p = this.prediccion;
     const objetivo = this.vivo() ? this.vista.interactuable(p.x, p.y) : null;
     this.botonesAccion.fijarInteraccion(Boolean(objetivo));
@@ -509,7 +515,7 @@ export default class ClienteScene extends Phaser.Scene {
   }
 
   dispararLocal(time) {
-    const arma = estadisticasArma(this.datosYo.arma, this.datosYo.mejoras);
+    const arma = estadisticasArma(this.datosYo.arma, this.datosYo.mejoras, modificadoresPasivas(this.datosYo.pasivas));
     const frenesi = this.yo.banderas & BANDERA_JUGADOR.frenesi ? HABILIDADES.tipos.frenesi.multiplicadorCadencia : 1;
     if (time < this.proximoDisparoLocal) return;
     this.proximoDisparoLocal = time + arma.cadenciaMs / frenesi;

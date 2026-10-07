@@ -95,7 +95,30 @@ export const ENEMIGOS = {
       pausaMs: 2200,
       acidoBalas: 18,
       invocar: 4
-    }
+    },
+    perro: { vida: 1, velocidad: 180, radio: 10, puntos: 15, sangre: 0x8a1010, zigzag: 0.75 },
+    policia: { vida: 6, velocidad: 72, radio: 14, puntos: 30, sangre: 0x8a1010, escudoFrontal: 0.25 },
+    chillona: { vida: 4, velocidad: 82, radio: 12, puntos: 35, sangre: 0x8a1010, grito: { cadenciaMs: 5000, radio: 280, duracionMs: 3000, multiplicador: 1.5 } },
+    hinchado: { vida: 5, velocidad: 55, radio: 16, puntos: 30, sangre: 0x9be22d, explosion: { radio: 85 } },
+    obrero: { vida: 5, velocidad: 75, radio: 14, puntos: 25, sangre: 0x8a1010, armadura: 0.6 },
+    ahogado: { vida: 4, velocidad: 60, radio: 14, puntos: 25, sangre: 0x3a6a8a, dividir: { tipo: 'rapido', cantidad: 2 } },
+    soldado: { vida: 4, velocidad: 70, radio: 13, puntos: 40, sangre: 0x8a1010, distancia: 230, tolerancia: 40, alcanceExtra: 120, cadenciaMs: 2400, rafaga: 3, separacionRafagaMs: 130 }
+  }
+};
+
+export const ZONAS_ENEMIGOS = {
+  probabilidad: 0.35,
+  tipos: {
+    suburbio: ['perro'],
+    avenida: ['policia', 'perro'],
+    plaza: ['chillona', 'perro'],
+    centro: ['policia', 'chillona'],
+    hospital: ['hinchado', 'chillona'],
+    industrial: ['obrero', 'hinchado'],
+    puerto: ['ahogado', 'obrero'],
+    autopista: ['perro', 'policia', 'hinchado'],
+    militar: ['soldado', 'obrero'],
+    puente: ['ahogado', 'soldado', 'hinchado']
   }
 };
 
@@ -244,8 +267,8 @@ export const MUNICION = {
 };
 
 export const DEDOS = {
-  probabilidad: { normal: 0.35, rapido: 0.3, tanque: 0.9, tirador: 0.6, minijefe: 1, jefe: 1 },
-  cantidad: { normal: 1, rapido: 1, tanque: 2, tirador: 1, minijefe: 8, jefe: 15 },
+  probabilidad: { normal: 0.35, rapido: 0.3, tanque: 0.9, tirador: 0.6, minijefe: 1, jefe: 1, perro: 0.3, policia: 0.8, chillona: 0.7, hinchado: 0.6, obrero: 0.6, ahogado: 0.4, soldado: 0.8 },
+  cantidad: { normal: 1, rapido: 1, tanque: 2, tirador: 1, minijefe: 8, jefe: 15, perro: 1, policia: 2, chillona: 2, hinchado: 1, obrero: 1, ahogado: 1, soldado: 2 },
   radioRecoger: 26,
   radioIman: 110,
   velocidadIman: 380,
@@ -280,21 +303,33 @@ export const MAZMORRA = {
   distanciaAparicion: 170
 };
 
+export const LIMITES = {
+  pasivas: 3,
+  mejoras: 3,
+  nivelMejora: 5
+};
+
 export const PASIVAS = {
-  vitalidad: { nombre: 'Vitalidad', texto: '+1 vida máxima\ny te cura 1 vida', maximo: 3 },
-  agilidad: { nombre: 'Agilidad', texto: '+15 % velocidad\nde movimiento', maximo: 3, valor: 0.15 },
-  regeneracion: { nombre: 'Regeneración', texto: 'Recuperas 1 vida\nal terminar cada nivel', maximo: 2 },
-  vampiro: { nombre: 'Vampiro', texto: 'Cada 25 zombies\nque eliminas recuperas\n1 vida', maximo: 2, bajas: 25 },
-  blindaje: { nombre: 'Blindaje', texto: '+50 % tiempo de\ninvulnerabilidad\ntras un golpe', maximo: 2, valor: 0.5 },
-  recarga: { nombre: 'Recarga rápida', texto: '-20 % enfriamiento\nde habilidades', maximo: 3, valor: 0.8 }
+  vitalidad: { nombre: 'Vitalidad', bueno: '+2 vidas máximas', malo: '-15 % velocidad', mods: { vidas: 2, velocidad: -0.15 } },
+  agilidad: { nombre: 'Agilidad', bueno: '+25 % velocidad', malo: '-1 vida máxima', mods: { velocidad: 0.25, vidas: -1 } },
+  vampiro: { nombre: 'Vampiro', bueno: 'Cada 15 bajas recuperas 1 vida', malo: '-20 % de daño', mods: { vampiro: 15, danio: -0.2 } },
+  blindaje: { nombre: 'Blindaje', bueno: '+80 % invulnerabilidad tras un golpe', malo: '-15 % cadencia', mods: { invulnerabilidad: 0.8, cadencia: -0.15 } },
+  recarga: { nombre: 'Recarga rápida', bueno: '-35 % enfriamiento de habilidades', malo: 'Los zombies son 10 % más rápidos', mods: { enfriamiento: -0.35, velocidadEnemigos: 0.1 } },
+  regeneracion: { nombre: 'Regeneración', bueno: 'Recuperas 1 vida al despejar cada sala', malo: '-15 % de daño', mods: { regeneracion: 1, danio: -0.15 } },
+  furia: { nombre: 'Furia', bueno: '+70 % de daño cuando te queda 1 vida', malo: '-1 vida máxima', mods: { furia: 0.7, vidas: -1 } },
+  codicia: { nombre: 'Codicia', bueno: 'Los zombies sueltan el doble de dedos', malo: 'Los zombies tienen 20 % más vida', mods: { dedos: 1, vidaEnemigos: 0.2 } },
+  cristal: { nombre: 'Cañón de cristal', bueno: '+50 % de daño', malo: '-50 % invulnerabilidad tras un golpe', mods: { danio: 0.5, invulnerabilidad: -0.5 } },
+  gatillo: { nombre: 'Gatillo loco', bueno: '+40 % cadencia', malo: 'Disparas con mucha menos precisión', mods: { cadencia: 0.4, dispersion: 0.25 } },
+  iman: { nombre: 'Imán', bueno: 'Atraes los dedos desde muy lejos', malo: '-10 % velocidad', mods: { iman: 2.5, velocidad: -0.1 } }
 };
 
 export const MEJORAS = {
-  danio: { nombre: 'Munición pesada', texto: '+25 % de daño\ncon tu arma', valor: 0.25 },
-  cadencia: { nombre: 'Gatillo ligero', texto: '+20 % de cadencia\nde disparo', valor: 0.2 },
-  calibre: { nombre: 'Calibre perforante', texto: 'Las balas atraviesan\n1 zombie más', valor: 1 },
-  canon: { nombre: 'Doble cañón', texto: '+1 bala por disparo', valor: 1 },
-  alcance: { nombre: 'Cañón largo', texto: '+30 % de alcance\nde las balas', valor: 0.3 }
+  danio: { nombre: 'Munición pesada', texto: '+20 % de daño por nivel', valor: 0.2 },
+  cadencia: { nombre: 'Gatillo ligero', texto: '+15 % de cadencia por nivel', valor: 0.15 },
+  calibre: { nombre: 'Calibre perforante', texto: 'Las balas atraviesan\n1 zombie más por nivel', valor: 1 },
+  canon: { nombre: 'Cañón múltiple', texto: '+1 bala por disparo\npor nivel', valor: 1 },
+  alcance: { nombre: 'Cañón largo', texto: '+25 % de alcance por nivel', valor: 0.25 },
+  critico: { nombre: 'Punto débil', texto: '+8 % de probabilidad de\ngolpe crítico (x3) por nivel', valor: 0.08 }
 };
 
 export const COFRES = {

@@ -57,7 +57,36 @@ Cruza la ciudad infestada en 3 mundos y 10 niveles, solo o con hasta 3 amigos (e
   - **Salida:** un portal; todo el equipo debe pararse en él para avanzar. En los niveles con jefe, el portal aparece al derrotarlo.
 - **Armas:** llevas 2 (con munición infinita) y cambias cuando quieras. Hay 7: pistola, revólver, escopeta, subfusil, ametralladora, rifle (perforante) y lanzagranadas (daño en área). Las armas nuevas caen al suelo (de cofres o al cambiar) y se recogen con **F**; si tienes las dos ranuras llenas, sueltas la que tienes en la mano.
 - **Dedos de zombie:** algunos zombies los sueltan al morir (los grandes y los jefes, más). Se recogen al pasar cerca y cada jugador tiene los suyos. En las tiendas compras armas, habilidades activas, pasivas y mejoras que aún no tienes.
-- **Cofres:** cada tipo tiene su diseño: azul con rayo (**habilidad activa**, eliges en E, Q o C), caja militar verde (**arma**, cae al suelo), madera con corazón (**pasiva**) y morado con flecha (**mejora** del arma).
+- **Cofres:** cada tipo tiene su diseño: azul con rayo (**habilidad activa**, eliges en E, Q o C), caja militar verde (**arma**), madera con corazón (**pasiva**) y morado con flecha (**mejora**). Las armas, pasivas y mejoras caen al suelo y se recogen con **F**.
+- **Límites:** 2 armas, **3 pasivas** y **3 mejoras**. Si recoges una mejora que ya tienes, **sube de nivel** (hasta V). Si estás al máximo, eliges cuál soltar y queda en el suelo (las mejoras conservan su nivel).
+- **Pasivas con ventaja y desventaja:**
+
+| Pasiva | Ventaja | Desventaja |
+|--------|---------|------------|
+| Vitalidad | +2 vidas máximas | −15 % velocidad |
+| Agilidad | +25 % velocidad | −1 vida máxima |
+| Vampiro | Cada 15 bajas recuperas 1 vida | −20 % de daño |
+| Blindaje | +80 % invulnerabilidad tras un golpe | −15 % cadencia |
+| Recarga rápida | −35 % enfriamiento de habilidades | Zombies 10 % más rápidos |
+| Regeneración | +1 vida al despejar cada sala | −15 % de daño |
+| Furia | +70 % de daño con 1 vida | −1 vida máxima |
+| Codicia | Doble de dedos | Zombies con 20 % más vida |
+| Cañón de cristal | +50 % de daño | −50 % invulnerabilidad |
+| Gatillo loco | +40 % cadencia | Mucha menos precisión |
+| Imán | Atraes los dedos desde lejos | −10 % velocidad |
+
+- **Mejoras (niveles I a V):** Munición pesada (daño), Gatillo ligero (cadencia), Calibre perforante, Cañón múltiple (balas extra), Cañón largo (alcance) y Punto débil (golpes críticos x3).
+- **Enemigos propios de cada zona**, además de los normales:
+
+| Enemigo | Comportamiento | Zonas |
+|---------|----------------|-------|
+| Perro zombie | Muy rápido y errático, poca vida | Barrio, avenida, plaza, autopista |
+| Policía antidisturbios | Su escudo frontal bloquea el 75 % del daño: flanquéalo | Avenida, centro, autopista |
+| Chillona | Grita y acelera a los zombies cercanos | Plaza, centro, hospital |
+| Hinchado | Explota al morir y daña a quien esté cerca | Hospital, industrial, autopista, puente |
+| Obrero con casco | Recibe 40 % menos daño | Industrial, puerto, militar |
+| Ahogado | Al morir se parte en 2 zombies rápidos | Puerto, puente |
+| Soldado zombie | Dispara ráfagas de 3 balas desde lejos | Militar, puente |
 - **Jefes:** embisten tras un aviso; la Abominación además lanza ácido e invoca zombies, y se enfurece con poca vida.
 - **Muerte permanente:** el equipo se conserva de nivel en nivel, pero si caes (o cae todo el equipo) la partida se pierde y empiezas de nuevo desde el Barrio residencial. No se guarda progreso.
 

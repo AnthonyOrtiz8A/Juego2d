@@ -1,6 +1,6 @@
-import { ANCHO, ALTO } from '../config.js';
+import { ANCHO, ALTO, PASIVAS, MEJORAS } from '../config.js';
 import { DESCRIPCIONES } from './Habilidades.js';
-import { describirRecompensa } from './Recompensas.js';
+import { describirRecompensa, nivelRomano } from './Recompensas.js';
 import { crearTexto, crearBoton } from './Interfaz.js';
 
 const PROFUNDIDAD = 70;
@@ -49,6 +49,17 @@ export default class SelectorRecompensa {
     this.agregar(crearTexto(scene, cx, arriba + 116, info.texto, 15, '#c9d1f0').setOrigin(0.5).setLineSpacing(4));
 
     const filaBotones = arriba + ALTO_PANEL - 90;
+    if (recompensa.tipo === 'pasiva' || recompensa.tipo === 'mejora') {
+      const lista = recompensa.tipo === 'pasiva'
+        ? (actual.pasivas || []).map((id) => [id, PASIVAS[id] ? PASIVAS[id].nombre : id])
+        : (actual.mejoras || []).map(([id, nivel]) => [id, MEJORAS[id] ? MEJORAS[id].nombre + ' ' + nivelRomano(nivel) : id]);
+      this.agregar(crearTexto(scene, cx, arriba + 172, 'Llevas el máximo. ¿Cuál sueltas?', 14, '#9aa4c7').setOrigin(0.5));
+      lista.forEach(([id, nombre], i) => {
+        this.boton(cx - 170 + i * 170, filaBotones, nombre, () => decidir({ tomar: true, ranura: id }), 165);
+      });
+      this.boton(cx, filaBotones + 52, 'Dejarla en el suelo', () => decidir({ tomar: false }), 240);
+      return;
+    }
     if (recompensa.tipo === 'activa') {
       const teclas = ['E', 'Q', 'C'];
       teclas.forEach((tecla, i) => {

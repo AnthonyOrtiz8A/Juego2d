@@ -9,6 +9,8 @@ export default class WaveManager {
     this.total = opciones.total || Infinity;
     this.jefe = opciones.jefe || null;
     this.multiplicadorCantidad = opciones.multiplicadorCantidad || 1;
+    this.especiales = opciones.especiales || [];
+    this.probabilidadEspecial = opciones.probabilidadEspecial || 0;
     this.oleada = this.inicio - 1;
     this.pendientes = 0;
     this.porTanda = 1;
@@ -56,6 +58,9 @@ export default class WaveManager {
   }
 
   elegirTipo() {
+    if (this.especiales.length > 0 && Math.random() < this.probabilidadEspecial) {
+      return this.especiales[Math.floor(Math.random() * this.especiales.length)];
+    }
     const extra = (this.oleada - 1) * OLEADAS.incrementoProbabilidad;
     const azar = Math.random();
     if (this.oleada >= OLEADAS.oleadaTanques) {

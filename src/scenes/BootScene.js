@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { MUNDO, COLORES, TACTIL, PACMAN, COFRES, ARMAS } from '../config.js';
-import { ESTUDIANTE, ZOMBIES, TAMANO_COFRE, DECORACIONES, TAMANO_DECORACION, dibujarEstudiante, dibujarZombie, dibujarCiudad, dibujarAcido, dibujarCorazon, dibujarCofre, dibujarDecoracion, dibujarArma, dibujarPortal, dibujarVendedor, dibujarPedestal, dibujarDedo, dibujarLlama, dibujarBrillo } from '../systems/Dibujos.js';
+import { ESTUDIANTE, ZOMBIES, TAMANO_COFRE, DECORACIONES, TAMANO_DECORACION, dibujarEstudiante, dibujarZombie, dibujarCiudad, dibujarAcido, dibujarCorazon, dibujarCofre, dibujarDecoracion, dibujarArma, dibujarPortal, dibujarVendedor, dibujarPedestal, dibujarDedo, dibujarLlama, dibujarBrillo, dibujarObjetoPasiva, dibujarObjetoMejora } from '../systems/Dibujos.js';
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -55,6 +55,8 @@ export default class BootScene extends Phaser.Scene {
     this.crearTextura('pedestal', 46, 44, dibujarPedestal);
     this.crearTextura('dedo', 20, 14, dibujarDedo);
     this.crearTextura('fuego', 28, 36, dibujarLlama);
+    this.crearTextura('objeto-pasiva', 32, 32, dibujarObjetoPasiva);
+    this.crearTextura('objeto-mejora', 32, 32, dibujarObjetoMejora);
     this.crearTextura('brillo', 128, 128, dibujarBrillo);
 
     Object.keys(COFRES.tipos).forEach((tipo) => {

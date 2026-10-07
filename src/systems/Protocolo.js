@@ -1,6 +1,6 @@
 import { HABILIDADES, COFRES, ARMAS } from '../config.js';
 
-export const TIPOS_ENEMIGO = ['normal', 'rapido', 'tanque', 'tirador', 'minijefe', 'jefe'];
+export const TIPOS_ENEMIGO = ['normal', 'rapido', 'tanque', 'tirador', 'minijefe', 'jefe', 'perro', 'policia', 'chillona', 'hinchado', 'obrero', 'ahogado', 'soldado'];
 export const IDS_HABILIDAD = Object.keys(HABILIDADES.tipos);
 export const TECLAS_HABILIDAD = ['E', 'Q', 'C'];
 export const TIPOS_COFRE = Object.keys(COFRES.tipos);
