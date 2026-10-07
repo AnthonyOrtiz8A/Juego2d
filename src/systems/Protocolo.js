@@ -7,8 +7,8 @@ export const TIPOS_COFRE = Object.keys(COFRES.tipos);
 export const IDS_ARMA = Object.keys(ARMAS);
 export const ESTADO_COFRE = { cerrado: 0, abierto: 1 };
 
-export const BANDERA_JUGADOR = { vivo: 1, escudo: 2, frenesi: 4, invulnerable: 8 };
-export const BANDERA_ENEMIGO = { golpeado: 1, congelado: 2 };
+export const BANDERA_JUGADOR = { vivo: 1, escudo: 2, frenesi: 4, invulnerable: 8, fuego: 16, sprint: 32 };
+export const BANDERA_ENEMIGO = { golpeado: 1, congelado: 2, emergiendo: 4 };
 
 export const EVENTO = {
   explosion: 'x',
@@ -17,5 +17,7 @@ export const EVENTO = {
   destello: 'f',
   sonido: 's',
   sacudida: 'k',
-  aviso: 'v'
+  aviso: 'v',
+  aparicion: 'p',
+  marca: 'm'
 };

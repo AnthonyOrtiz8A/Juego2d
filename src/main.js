@@ -7,6 +7,7 @@ import GameOverScene from './scenes/GameOverScene.js';
 import PacmanScene from './scenes/PacmanScene.js';
 import LobbyScene from './scenes/LobbyScene.js';
 import ClienteScene from './scenes/ClienteScene.js';
+import PersonajesScene from './scenes/PersonajesScene.js';
 
 const juego = new Phaser.Game({
   type: Phaser.AUTO,
@@ -27,7 +28,7 @@ const juego = new Phaser.Game({
     default: 'arcade',
     arcade: { debug: false }
   },
-  scene: [BootScene, MenuScene, GameScene, GameOverScene, PacmanScene, LobbyScene, ClienteScene]
+  scene: [BootScene, MenuScene, PersonajesScene, GameScene, GameOverScene, PacmanScene, LobbyScene, ClienteScene]
 });
 
 juego.scale.on(Phaser.Scale.Events.ENTER_FULLSCREEN, () => {

@@ -98,44 +98,195 @@ function dibujarPerro(g, z) {
   g.fillRect(c + 20, c + 0.5, 2, 1);
 }
 
-export function dibujarEstudiante(g) {
-  const e = ESTUDIANTE;
-  const c = e.tamano / 2;
+function aclararColor(color, cantidad) {
+  const r = Math.min(255, ((color >> 16) & 255) + cantidad);
+  const v = Math.min(255, ((color >> 8) & 255) + cantidad);
+  const a = Math.min(255, (color & 255) + cantidad);
+  return (r << 16) | (v << 8) | a;
+}
+
+export function dibujarPersonaje(g, personaje) {
+  const col = personaje.colores;
+  const acc = personaje.accesorio;
+  const c = ESTUDIANTE.tamano / 2;
 
   g.fillStyle(0x000000, 0.3);
   g.fillEllipse(c + 2, c + 3, 24, 32);
 
-  g.fillStyle(e.mochila, 1);
-  g.fillRoundedRect(c - 15, c - 9, 10, 18, 3);
-  g.fillStyle(e.mochilaSombra, 1);
-  g.fillRoundedRect(c - 14, c - 6, 5, 12, 2);
+  if (acc === 'mochila') {
+    g.fillStyle(col.extra, 1);
+    g.fillRoundedRect(c - 15, c - 9, 10, 18, 3);
+    g.fillStyle(0x000000, 0.25);
+    g.fillRoundedRect(c - 14, c - 6, 5, 12, 2);
+  } else if (acc === 'cascoBombero') {
+    g.fillStyle(0x7a7a7a, 1);
+    g.fillRoundedRect(c - 15, c - 7, 9, 14, 3);
+    g.fillStyle(0xc0392b, 1);
+    g.fillCircle(c - 11, c, 3);
+  } else if (acc === 'gafas' || acc === 'cascoMilitar') {
+    g.fillStyle(col.extra, 1);
+    g.fillRoundedRect(c - 13, c - 8, 7, 16, 2);
+  } else if (acc === 'cofia') {
+    g.fillStyle(0xffffff, 1);
+    g.fillRoundedRect(c - 13, c - 7, 7, 14, 2);
+    g.fillStyle(col.extra, 1);
+    g.fillRect(c - 11, c - 4, 3, 8);
+    g.fillRect(c - 13, c - 1.5, 7, 3);
+  }
 
-  g.lineStyle(5, e.sudadera, 1);
+  g.lineStyle(5, col.ropa, 1);
   g.lineBetween(c, c - 10, c + 7, c - 8);
   g.lineBetween(c, c + 10, c + 7, c + 8);
-  g.lineStyle(4, e.piel, 1);
+  g.lineStyle(4, col.piel, 1);
   g.lineBetween(c + 6, c - 8, c + 14, c - 2);
   g.lineBetween(c + 6, c + 8, c + 14, c + 2);
 
-  g.fillStyle(e.arma, 1);
+  g.fillStyle(ESTUDIANTE.arma, 1);
   g.fillRect(c + 12, c - 2.5, 11, 5);
-  g.fillStyle(e.armaDetalle, 1);
+  g.fillStyle(ESTUDIANTE.armaDetalle, 1);
   g.fillRect(c + 12, c - 2.5, 4, 5);
 
-  g.fillStyle(e.sudadera, 1);
+  if (acc === 'bata') {
+    g.fillStyle(col.ropa, 1);
+    g.fillEllipse(c - 2, c, 19, 30);
+    g.lineStyle(1, col.ropaSombra, 1);
+    g.lineBetween(c + 2, c - 12, c + 2, c + 12);
+  }
+  g.fillStyle(col.ropa, 1);
   g.fillEllipse(c, c, 15, 27);
-  g.fillStyle(e.sudaderaSombra, 1);
+  g.fillStyle(col.ropaSombra, 1);
   g.fillEllipse(c - 3, c, 7, 18);
-  g.lineStyle(1.5, e.mochilaSombra, 1);
-  g.lineBetween(c - 5, c - 8, c + 3, c - 10);
-  g.lineBetween(c - 5, c + 8, c + 3, c + 10);
 
-  g.fillStyle(e.pelo, 1);
+  if (acc === 'cascoBombero') {
+    g.fillStyle(0xd8d8a0, 1);
+    g.fillRect(c - 7, c - 12, 2.5, 24);
+    g.fillRect(c + 2, c - 12, 2.5, 24);
+  } else if (acc === 'cascoMilitar') {
+    g.fillStyle(col.extra, 1);
+    g.fillRect(c - 4, c - 9, 5, 5);
+    g.fillRect(c - 4, c + 4, 5, 5);
+  } else if (acc === 'gafas') {
+    g.fillStyle(0x3a3a3a, 1);
+    g.fillRect(c - 7, c - 12, 3, 24);
+  } else if (acc === 'mochila') {
+    g.lineStyle(1.5, 0x000000, 0.35);
+    g.lineBetween(c - 5, c - 8, c + 3, c - 10);
+    g.lineBetween(c - 5, c + 8, c + 3, c + 10);
+  } else if (acc === 'gorraPolicia') {
+    g.fillStyle(col.extra, 1);
+    g.fillCircle(c + 3, c - 6, 1.8);
+  } else if (acc === 'banda') {
+    g.fillStyle(0xffffff, 0.85);
+    g.fillRect(c - 2, c - 3, 4, 6);
+  }
+
+  g.fillStyle(col.pelo, 1);
   g.fillCircle(c, c, 7.5);
-  g.fillStyle(e.piel, 1);
+  g.fillStyle(col.piel, 1);
   g.fillEllipse(c + 4.5, c, 5, 9);
-  g.fillStyle(e.pelo, 1);
-  g.fillTriangle(c + 2, c - 6, c + 6, c - 3, c + 1, c - 1);
+
+  if (acc === 'cascoBombero') {
+    g.fillStyle(0xc0392b, 1);
+    g.fillEllipse(c - 1, c, 17, 18);
+    g.fillStyle(aclararColor(0xc0392b, 40), 1);
+    g.fillRect(c - 3, c - 1.5, 9, 3);
+  } else if (acc === 'cascoMilitar') {
+    g.fillStyle(col.ropa, 1);
+    g.fillEllipse(c - 0.5, c, 16, 17);
+    g.fillStyle(col.ropaSombra, 1);
+    g.fillCircle(c - 3, c - 3, 2);
+    g.fillCircle(c + 1, c + 3, 2);
+  } else if (acc === 'gorraPolicia') {
+    g.fillStyle(col.ropaSombra, 1);
+    g.fillEllipse(c - 1, c, 15, 16);
+    g.fillRect(c + 4, c - 5, 5, 10);
+    g.fillStyle(col.extra, 1);
+    g.fillCircle(c + 1, c, 2);
+  } else if (acc === 'cofia') {
+    g.fillStyle(0xffffff, 1);
+    g.fillRoundedRect(c - 7, c - 5, 8, 10, 2);
+    g.fillStyle(col.extra, 1);
+    g.fillRect(c - 4, c - 3, 2, 6);
+    g.fillRect(c - 6, c - 1, 6, 2);
+  } else if (acc === 'gafas') {
+    g.fillStyle(0x3ea8ff, 0.9);
+    g.fillCircle(c + 3, c - 3, 2.5);
+    g.fillCircle(c + 3, c + 3, 2.5);
+    g.lineStyle(1.5, 0x3a3a3a, 1);
+    g.lineBetween(c - 6, c - 3, c + 1, c - 3);
+    g.lineBetween(c - 6, c + 3, c + 1, c + 3);
+  } else if (acc === 'banda') {
+    g.lineStyle(2.5, col.extra, 1);
+    g.lineBetween(c + 2, c - 7, c + 2, c + 7);
+    g.lineBetween(c - 6, c - 2, c - 10, c - 4);
+  } else if (acc === 'bata') {
+    g.lineStyle(1.2, 0x1b1b1b, 1);
+    g.strokeCircle(c + 5, c - 2.5, 1.8);
+    g.strokeCircle(c + 5, c + 2.5, 1.8);
+  } else {
+    g.fillStyle(col.pelo, 1);
+    g.fillTriangle(c + 2, c - 6, c + 6, c - 3, c + 1, c - 1);
+  }
+}
+
+export function dibujarEstudiante(g) {
+  dibujarPersonaje(g, { accesorio: 'mochila', colores: { ropa: ESTUDIANTE.sudadera, ropaSombra: ESTUDIANTE.sudaderaSombra, pelo: ESTUDIANTE.pelo, piel: ESTUDIANTE.piel, extra: ESTUDIANTE.mochila } });
+}
+
+export function dibujarOrbeEnergia(g) {
+  for (let i = 4; i >= 1; i--) {
+    g.fillStyle(0x3ea8ff, 0.12 * (5 - i));
+    g.fillCircle(10, 10, 3 + i * 2);
+  }
+  g.fillStyle(0xbfe9ff, 1);
+  g.fillCircle(10, 10, 4);
+  g.fillStyle(0xffffff, 1);
+  g.fillCircle(9, 9, 1.5);
+}
+
+export function dibujarTorreta(g) {
+  g.fillStyle(0x000000, 0.35);
+  g.fillCircle(23, 24, 15);
+  g.fillStyle(0x3a3e44, 1);
+  g.fillCircle(21, 21, 15);
+  g.lineStyle(2, 0x1f2f5a, 1);
+  g.strokeCircle(21, 21, 15);
+  g.fillStyle(0x5a5f66, 1);
+  g.fillCircle(21, 21, 8);
+  g.fillStyle(0x1b1b1b, 1);
+  g.fillRect(21, 18, 20, 6);
+  g.fillStyle(0x3ea8ff, 1);
+  g.fillCircle(21, 21, 3);
+}
+
+export function dibujarAnilloFuego(g) {
+  for (let i = 0; i < 3; i++) {
+    g.lineStyle(10 - i * 3, [0xc0391b, 0xff7a1a, 0xffd23f][i], 0.55 + i * 0.15);
+    g.strokeCircle(140, 140, 130);
+  }
+}
+
+export function dibujarMarca(g) {
+  g.lineStyle(4, 0xff3b2f, 0.9);
+  g.strokeCircle(60, 60, 55);
+  g.lineStyle(2, 0xff3b2f, 0.9);
+  g.lineBetween(60, 15, 60, 105);
+  g.lineBetween(15, 60, 105, 60);
+  g.fillStyle(0xff3b2f, 0.15);
+  g.fillCircle(60, 60, 55);
+}
+
+export function dibujarHoyo(g) {
+  g.fillStyle(0x140d08, 0.85);
+  g.fillEllipse(24, 24, 40, 30);
+  g.fillStyle(0x3a2a1c, 1);
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2;
+    g.fillCircle(24 + Math.cos(a) * 21, 24 + Math.sin(a) * 16, 3 + (i % 3));
+  }
+  g.lineStyle(1.5, 0x0a0705, 1);
+  g.lineBetween(4, 24, 0, 30);
+  g.lineBetween(44, 22, 48, 16);
 }
 
 export function dibujarZombie(g, tipo) {

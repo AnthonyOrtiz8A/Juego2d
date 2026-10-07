@@ -50,7 +50,7 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   crearBotonHistoria(y) {
-    crearBoton(this, ANCHO / 2, y, 'Modo historia', () => this.scene.start('Game', { modo: 'historia', nivel: 0 }), ANCHO_BOTON, ALTO_BOTON);
+    crearBoton(this, ANCHO / 2, y, 'Modo historia', () => this.scene.start('Personajes', { modo: 'historia', nivel: 0 }), ANCHO_BOTON, ALTO_BOTON);
   }
 
   crearPantallaCompleta() {
@@ -82,12 +82,12 @@ export default class MenuScene extends Phaser.Scene {
 
   textoControles() {
     if (esDispositivoTactil(this.game)) {
-      return 'Mover: joystick (lado izquierdo)   ·   Disparar: lado derecho (apunta solo)\nHabilidades: botones E, Q y C   ·   Historia: botones ARMA y F';
+      return 'Mover: joystick (lado izquierdo)   ·   Disparar: lado derecho (apunta solo)\nHabilidades: botones E, Q y C   ·   Ulti: botón ULTI   ·   Historia: ARMA y F';
     }
-    return 'Mover: WASD   ·   Apuntar: mouse   ·   Disparar: clic   ·   Pausa: P o Esc\nHabilidades: E, Q y C   ·   Cambiar arma: X o rueda   ·   Usar: F';
+    return 'Mover: WASD   ·   Apuntar: mouse   ·   Disparar: clic   ·   Pausa: P o Esc\nHabilidades: E, Q y C   ·   Ulti: R   ·   Cambiar arma: X o rueda   ·   Usar: F';
   }
 
   jugar() {
-    this.scene.start('Game', { modo: 'supervivencia' });
+    this.scene.start('Personajes', { modo: 'supervivencia' });
   }
 }

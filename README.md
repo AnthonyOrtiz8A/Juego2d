@@ -13,6 +13,7 @@ Shooter top-down de arena con oleadas infinitas, hecho con **Phaser 3** y **Vite
 | Habilidad 1 | E                          | Botón **E** (sobre el botón de disparo)            |
 | Habilidad 2 | Q (desde la oleada 4)      | Botón **Q** (a la izquierda del disparo)           |
 | Habilidad 3 | C (desde la oleada 8)      | Botón **C** (arriba a la izquierda del disparo)    |
+| Ulti del personaje | R                      | Botón redondo **ULTI**                             |
 | Cambiar arma (historia) | X o rueda del mouse | Botón **ARMA** |
 | Usar / comprar (historia) | F | Botón **F** (aparece cerca de armas y tiendas) |
 
@@ -33,11 +34,32 @@ Empiezas con **Impulso** en la tecla E. Al terminar la oleada 3 se desbloquea la
 
 Los enfriamientos se detienen mientras el juego está en pausa o eligiendo poder. Todos los valores se ajustan en `HABILIDADES` dentro de `src/config.js`.
 
-- Juegas como un estudiante con mochila en una ciudad en ruinas (calles, autos quemados, sangre y edificios que hacen de muro en el borde).
+- Los zombies **salen del suelo** dentro de la pantalla (un hoyo, tierra que salta y el zombie creciendo); mientras emergen no hacen daño ni reciben balas. Los jefes tardan más en salir y hacen temblar la cámara.
+- La partida se juega en una ciudad en ruinas (calles, autos quemados, sangre y edificios que hacen de muro en el borde).
 - Tipos de zombie: **normal** (ropa rota, brazos estirados), **rápido** (flaco y pálido, poca vida), **tanque** (enorme, lento y resistente) y **escupidor** (inflado y verde, desde la oleada 3: se mantiene a distancia y te escupe ácido; el Escudo lo bloquea).
 - Tienes 3 vidas y un breve tiempo de invulnerabilidad tras recibir daño.
 - El récord se guarda en el navegador (`localStorage`).
 - El sonido (generado con WebAudio) está desactivado por defecto; se activa desde el menú.
+
+## Personajes
+
+Antes de jugar eliges entre 8 personajes (en multijugador, cada uno elige el suyo en la sala). Cada uno tiene un aspecto propio, una **pasiva de equipo** y una **ulti**.
+
+- **Pasiva de equipo:** se comparte con todos los integrantes. Personajes distintos suman sus pasivas; repetir personaje no las duplica.
+- **Ulti (R / botón ULTI):** cuesta **100 de energía** y luego tiene un enfriamiento largo. La energía son orbes azules que sueltan los zombies (la mitad de las veces; los jefes sueltan mucha) y se recogen al pasar cerca, igual que los dedos. La barra de energía está abajo al centro.
+
+| Personaje | Pasiva de equipo | Ulti | Enfriamiento |
+|-----------|------------------|------|--------------|
+| Leo, estudiante | +10 % velocidad | **Lluvia de balas**: 3 s disparando en todas direcciones | 40 s |
+| Sofía, enfermera | +1 vida máxima | **Botiquín**: cura 2 vidas a todos, revive caídos y da escudo 2 s | 55 s |
+| Marco, policía | +10 % de daño | **Torreta**: dispara sola al zombie más cercano 10 s | 45 s |
+| Raúl, bombero | +25 % invulnerabilidad tras un golpe | **Anillo de fuego**: quema a los zombies a tu alrededor 6 s | 45 s |
+| Valeria, mecánica | −15 % enfriamiento de habilidades | **Enjambre de misiles**: 8 misiles explosivos a los más cercanos | 40 s |
+| Diego, deportista | +12 % cadencia | **Sprint imparable**: 5 s rapidísimo, invulnerable y arrollando zombies | 40 s |
+| Ana, científica | +30 % de energía obtenida | **Bomba criogénica**: congela a todos 4 s y reciben +50 % de daño | 50 s |
+| Kenji, militar | Las balas atraviesan 1 zombie más | **Ataque aéreo**: 6 bombazos en zonas marcadas | 50 s |
+
+Todo se ajusta en `PERSONAJES` y `ENERGIA` dentro de `src/config.js`. En el modo historia la energía se conserva entre niveles.
 
 ## Modo historia (estilo *roguelike*)
 
@@ -96,7 +118,8 @@ Cooperativo: todos contra las mismas oleadas, con puntaje de equipo.
 
 1. Un jugador pulsa **Multijugador → Crear partida** y recibe un código de 4 letras.
 2. Los demás (hasta 3 más) pulsan **Multijugador**, escriben su nombre y el código, y pulsan **Unirse**.
-3. El anfitrión pulsa **Empezar partida**.
+3. Cada uno elige su personaje en la sala; abajo se ven las pasivas que tendrá el equipo.
+4. El anfitrión pulsa **Empezar partida**.
 
 - Funciona con WebRTC (PeerJS): los dispositivos se conectan directamente entre sí. Para encontrarse usan el servidor público gratuito de PeerJS, así que se necesita internet al conectar; en la misma WiFi el tráfico del juego va directo entre los dispositivos.
 - El anfitrión ejecuta la partida: si cierra la pestaña o la deja en segundo plano, el juego se detiene para todos.
@@ -190,12 +213,13 @@ Como `vite.config.js` usa `base: './'`, el build funciona en cualquier ruta sin 
 └── src/
     ├── main.js              Configuración de Phaser
     ├── config.js            Valores de balance (velocidades, vida, cadencia, oleadas…)
-    ├── scenes/              Boot (genera texturas), Menu, Game, GameOver, Pacman, Lobby, Cliente
+    ├── scenes/              Boot (genera texturas), Menu, Personajes, Game, GameOver, Pacman, Lobby, Cliente
     ├── entities/            Player, Enemy, Bullet
     └── systems/             WaveManager, TouchControls, Storage, Sonido, Interfaz, Dibujos, Red, Protocolo,
                              Mapas, Recompensas, SelectorRecompensa, Mazmorra, Historia, VistaHistoria,
                              HudArmas, Minimapa, BotonesAccion,
-                             Habilidades, BotonesHabilidad, SelectorHabilidades
+                             Habilidades, BotonesHabilidad, SelectorHabilidades,
+                             Personajes, Energia, Ultis, HudUlti, Efectos
 ```
 
 Para ajustar la dificultad, edita `src/config.js`.

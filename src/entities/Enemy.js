@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ENEMIGOS, HABILIDADES, RED } from '../config.js';
+import { ENEMIGOS, HABILIDADES, RED, APARICION } from '../config.js';
 
 export default class Enemy extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
@@ -22,10 +22,12 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.impulsoHasta = 0;
     this.proximoGrito = 0;
     this.rafagaRestante = 0;
+    this.emergiendoHasta = 0;
+    this.duracionEmergencia = 1;
     this.setDepth(5);
   }
 
-  aparecer(tipo, x, y, multiplicadorVelocidad, objetivo, multiplicadorVida = 1) {
+  aparecer(tipo, x, y, multiplicadorVelocidad, objetivo, multiplicadorVida = 1, animar = true) {
     const datos = ENEMIGOS.tipos[tipo];
     this.tipo = tipo;
     this.datos = datos;
@@ -49,6 +51,39 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.rafagaRestante = 0;
     this.proximoGrito = datos.grito ? this.scene.reloj + Phaser.Math.Between(1000, datos.grito.cadenciaMs) : 0;
     this.clearTint();
+    this.setAlpha(1);
+    this.emergiendoHasta = 0;
+    if (animar) this.emerger();
+  }
+
+  emerger() {
+    const jefe = Boolean(this.datos.jefe);
+    this.duracionEmergencia = jefe ? APARICION.duracionJefeMs : APARICION.duracionMs;
+    this.emergiendoHasta = this.scene.reloj + this.duracionEmergencia;
+    this.body.enable = false;
+    this.body.velocity.set(0, 0);
+    this.setScale(APARICION.escalaInicial).setAlpha(0);
+    if (this.objetivo) this.rotation = Math.atan2(this.objetivo.y - this.y, this.objetivo.x - this.x);
+    this.scene.efectoAparicion(this.x, this.y, jefe);
+  }
+
+  emergiendo() {
+    return this.emergiendoHasta > 0 && this.scene.reloj < this.emergiendoHasta;
+  }
+
+  actualizarEmergencia() {
+    const restante = this.emergiendoHasta - this.scene.reloj;
+    if (restante > 0) {
+      const progreso = 1 - restante / this.duracionEmergencia;
+      this.setScale(APARICION.escalaInicial + (1 - APARICION.escalaInicial) * progreso);
+      this.setAlpha(Math.min(1, progreso * 1.6));
+      this.angle += Math.sin(this.scene.reloj / 45) * 2;
+      return true;
+    }
+    this.emergiendoHasta = 0;
+    this.body.enable = true;
+    this.setScale(1).setAlpha(1);
+    return false;
   }
 
   factorDanio(bala) {
@@ -76,6 +111,7 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
   preUpdate(time, delta) {
     super.preUpdate(time, delta);
     if (!this.active) return;
+    if (this.emergiendoHasta && this.actualizarEmergencia()) return;
 
     if (this.flashHasta && time > this.flashHasta) {
       this.flashHasta = 0;
@@ -90,11 +126,16 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
 
     const congelacion = HABILIDADES.tipos.congelar;
-    const lento = this.scene.reloj < this.scene.congeladoHasta;
+    const crio = this.scene.reloj < this.scene.crioHasta;
+    const lento = crio || this.scene.reloj < this.scene.congeladoHasta;
     if (!this.flashHasta && lento !== this.congelado) {
       this.congelado = lento;
       if (lento) this.setTint(congelacion.color);
       else this.clearTint();
+    }
+    if (crio) {
+      this.body.velocity.set(0, 0);
+      return;
     }
 
     let velocidad = lento ? this.velocidad * congelacion.factorVelocidad : this.velocidad;

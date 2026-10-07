@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { Peer } from 'peerjs';
 import { RED } from '../config.js';
+import Storage from './Storage.js';
+import { personajeValido } from './Personajes.js';
 
 const LETRAS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 export const ID_ANFITRION = 'anfitrion';
@@ -56,7 +58,7 @@ export default class Red extends Phaser.Events.EventEmitter {
     this.esAnfitrion = true;
     this.nombre = limpiarNombre(nombre);
     this.miId = ID_ANFITRION;
-    this.jugadores = [{ id: ID_ANFITRION, nombre: this.nombre }];
+    this.jugadores = [{ id: ID_ANFITRION, nombre: this.nombre, personaje: personajeValido(Storage.obtenerPersonaje()) }];
     return this.abrirAnfitrion(RED.intentosCodigo);
   }
 
@@ -92,6 +94,10 @@ export default class Red extends Phaser.Events.EventEmitter {
         this.recibirSaludo(conexion, datos);
         return;
       }
+      if (datos && datos.t === 'personaje') {
+        this.fijarPersonaje(conexion.peer, datos.id);
+        return;
+      }
       this.emit('mensaje', conexion.peer, datos);
     });
     conexion.on('close', () => this.quitarCliente(conexion.peer));
@@ -122,7 +128,7 @@ export default class Red extends Phaser.Events.EventEmitter {
       return;
     }
     this.clientes.set(conexion.peer, conexion);
-    this.jugadores.push({ id: conexion.peer, nombre: limpiarNombre(datos.nombre) });
+    this.jugadores.push({ id: conexion.peer, nombre: limpiarNombre(datos.nombre), personaje: personajeValido(datos.personaje) });
     this.enviarLobby();
   }
 
@@ -140,6 +146,26 @@ export default class Red extends Phaser.Events.EventEmitter {
     this.jugadores = this.jugadores.filter((jugador) => jugador.id !== id);
     this.emit('salio', id);
     if (!this.enPartida) this.enviarLobby();
+  }
+
+  fijarPersonaje(id, personaje) {
+    if (this.enPartida) return;
+    const jugador = this.jugadores.find((otro) => otro.id === id);
+    if (!jugador) return;
+    jugador.personaje = personajeValido(personaje);
+    this.enviarLobby();
+  }
+
+  elegirPersonaje(personaje) {
+    const id = personajeValido(personaje);
+    Storage.guardarPersonaje(id);
+    if (this.esAnfitrion) this.fijarPersonaje(this.miId, id);
+    else this.enviarAnfitrion({ t: 'personaje', id });
+  }
+
+  personajePropio() {
+    const jugador = this.jugadores.find((otro) => otro.id === this.miId);
+    return personajeValido(jugador ? jugador.personaje : Storage.obtenerPersonaje());
   }
 
   enviarLobby() {
@@ -167,7 +193,7 @@ export default class Red extends Phaser.Events.EventEmitter {
         this.miId = id;
         const conexion = peer.connect(RED.prefijo + this.codigo, { reliable: true, serialization: 'json' });
         this.anfitrion = conexion;
-        conexion.on('open', () => conexion.send({ t: 'hola', nombre: this.nombre }));
+        conexion.on('open', () => conexion.send({ t: 'hola', nombre: this.nombre, personaje: personajeValido(Storage.obtenerPersonaje()) }));
         conexion.on('data', (datos) => {
           if (datos.t === 'rechazo') {
             fallar(datos.motivo);

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ANCHO, ALTO, MUNDO, JUGADOR, BALA, BALA_ENEMIGA, ENEMIGOS, EFECTOS, TACTIL, HABILIDADES, RED, HISTORIA, ARMAS } from '../config.js';
+import { ANCHO, ALTO, MUNDO, JUGADOR, BALA, BALA_ENEMIGA, ENEMIGOS, EFECTOS, TACTIL, HABILIDADES, RED, HISTORIA, ARMAS, APARICION } from '../config.js';
 import Player from '../entities/Player.js';
 import Bullet from '../entities/Bullet.js';
 import Enemy from '../entities/Enemy.js';
@@ -18,7 +18,11 @@ import HudArmas from '../systems/HudArmas.js';
 import Minimapa from '../systems/Minimapa.js';
 import BotonesAccion from '../systems/BotonesAccion.js';
 import { crearTexto, crearBoton, FUENTE } from '../systems/Interfaz.js';
-import { ESTUDIANTE } from '../systems/Dibujos.js';
+import Energia from '../systems/Energia.js';
+import GestorUltis from '../systems/Ultis.js';
+import HudUlti from '../systems/HudUlti.js';
+import { efectoAparicion, mostrarMarca, actualizarAnillo } from '../systems/Efectos.js';
+import { personajeValido, datosPersonaje, modificadoresEquipo } from '../systems/Personajes.js';
 import { TIPOS_ENEMIGO, IDS_HABILIDAD, TECLAS_HABILIDAD, IDS_ARMA, BANDERA_JUGADOR, BANDERA_ENEMIGO, EVENTO } from '../systems/Protocolo.js';
 
 const PROFUNDIDAD_HUD = 30;
@@ -53,6 +57,7 @@ export default class GameScene extends Phaser.Scene {
     this.estadoInicial = entrada.estado || null;
     this.puntosIniciales = entrada.puntos || 0;
     this.semilla = Number.isFinite(entrada.semilla) ? entrada.semilla : Math.floor(Math.random() * 1e9);
+    this.personajeLocal = personajeValido(entrada.personaje || Storage.obtenerPersonaje());
     this.sys.settings.data = {};
   }
 
@@ -85,6 +90,8 @@ export default class GameScene extends Phaser.Scene {
     this.eligiendo = false;
     this.reloj = 0;
     this.congeladoHasta = 0;
+    this.crioHasta = 0;
+    this.crioExtra = 0;
     this.eventosRed = [];
     this.proximoSnapshot = 0;
     this.secuencia = 0;
@@ -95,6 +102,8 @@ export default class GameScene extends Phaser.Scene {
     this.balas = this.crearPool(Bullet, BALA.poolMax);
     this.balasEnemigas = this.crearPool(Bullet, BALA_ENEMIGA.poolMax, 'bala-enemiga');
     this.enemigos = this.crearPool(Enemy, ENEMIGOS.poolMax);
+    this.energia = new Energia(this);
+    this.ultis = new GestorUltis(this);
     this.jugadores = this.crearJugadores();
     this.jugador = this.jugadores.find((jugador) => jugador.local);
     this.cameras.main.setBounds(0, 0, this.limitesMundo.ancho, this.limitesMundo.alto);
@@ -130,6 +139,7 @@ export default class GameScene extends Phaser.Scene {
     TECLAS_HABILIDAD.forEach((tecla) => this.input.keyboard.on('keydown-' + tecla, () => this.usarHabilidad(tecla)));
     this.input.keyboard.on('keydown-X', () => this.accion('cambiar'));
     this.input.keyboard.on('keydown-F', () => this.accion('interactuar'));
+    this.input.keyboard.on('keydown-R', () => this.usarUlti());
     this.input.on('wheel', () => this.accion('cambiar'));
 
     this.crearHud();
@@ -137,6 +147,7 @@ export default class GameScene extends Phaser.Scene {
     this.habilidades = this.jugador.habilidades;
     this.modoTactil = this.controlesTactiles.activo;
     this.botonesHabilidad = new BotonesHabilidad(this, this.habilidades, this.modoTactil);
+    this.hudUlti = new HudUlti(this, this.jugador.personaje, this.modoTactil, () => this.usarUlti());
     this.mostrarBotonPausa(this.modoTactil);
     this.selector = new SelectorHabilidades(this, this.habilidades, () => this.terminarEleccion());
     this.selectorRecompensa = new SelectorRecompensa(this);
@@ -200,17 +211,21 @@ export default class GameScene extends Phaser.Scene {
   }
 
   crearJugadores() {
-    const lista = this.multijugador ? this.red.jugadores : [{ id: 'local', nombre: '' }];
+    const lista = this.multijugador ? this.red.jugadores : [{ id: 'local', nombre: '', personaje: this.personajeLocal }];
+    this.modsEquipo = modificadoresEquipo(lista.map((datos) => datos.personaje));
     return lista.map((datos, i) => {
       const angulo = (i * Math.PI) / 2;
       const distancia = i === 0 ? 0 : RED.separacionAparicion;
       const x = MUNDO.ancho / 2 + Math.cos(angulo) * distancia;
       const y = MUNDO.alto / 2 + Math.sin(angulo) * distancia;
       const local = !this.multijugador || datos.id === this.red.miId;
-      const jugador = new Player(this, x, y, { id: datos.id, nombre: datos.nombre, local, indice: i });
+      const jugador = new Player(this, x, y, { id: datos.id, nombre: datos.nombre, local, indice: i, personaje: datos.personaje });
       jugador.habilidades = new GestorHabilidades(this, jugador);
+      jugador.modsEquipo = this.modsEquipo;
+      jugador.vidas = jugador.vidasMaximas();
       jugador.entrada.x = null;
       jugador.entrada.y = null;
+      jugador.entrada.ulti = false;
       if (this.historia && this.estadoInicial) importarEstado(jugador, this.estadoInicial[datos.id]);
       jugador.escudoImagen = this.add.image(x, y, 'escudo').setDepth(11).setVisible(false);
       if (this.multijugador) {
@@ -325,6 +340,7 @@ export default class GameScene extends Phaser.Scene {
     this.modoTactil = this.controlesTactiles.activo;
     this.botonesHabilidad.cambiarModo(this.modoTactil);
     this.botonesAccion.cambiarModo(this.modoTactil && this.historia);
+    this.hudUlti.cambiarModo(this.modoTactil);
     this.mostrarBotonPausa(this.modoTactil);
   }
 
@@ -369,6 +385,7 @@ export default class GameScene extends Phaser.Scene {
     this.controlesTactiles.reiniciar();
     this.controlesTactiles.mostrar(false);
     this.botonesHabilidad.mostrar(false);
+    this.hudUlti.mostrar(false);
   }
 
   reanudarMundo() {
@@ -379,6 +396,7 @@ export default class GameScene extends Phaser.Scene {
     this.anuncio.setVisible(true);
     this.controlesTactiles.mostrar(true);
     this.botonesHabilidad.mostrar(true);
+    this.hudUlti.mostrar(true);
   }
 
   pausar() {
@@ -410,6 +428,41 @@ export default class GameScene extends Phaser.Scene {
   usarHabilidad(tecla, jugador = this.jugador) {
     if (this.pausado || this.terminado || this.eligiendo || !jugador.vivo) return;
     if (jugador.habilidades.usar(tecla, this.reloj)) this.sonar('habilidad', jugador);
+  }
+
+  usarUlti(jugador = this.jugador) {
+    if (this.pausado || this.terminado || this.eligiendo || !jugador.vivo) return;
+    const ulti = datosPersonaje(jugador.personaje).ulti;
+    const restante = jugador.ultiListaEn - this.reloj;
+    if (restante > 0) {
+      this.avisar(jugador, ulti.nombre + ' se recarga en ' + Math.ceil(restante / 1000) + 's');
+      return;
+    }
+    if (jugador.energia < ulti.costo) {
+      this.avisar(jugador, 'Necesitas ' + ulti.costo + ' de energía (tienes ' + Math.floor(jugador.energia) + ')');
+      return;
+    }
+    jugador.energia -= ulti.costo;
+    jugador.ultiDuracion = ulti.enfriamientoMs * jugador.multiplicadorEnfriamiento();
+    jugador.ultiListaEn = this.reloj + jugador.ultiDuracion;
+    this.ultis.ejecutar(jugador);
+    this.anunciar(this.multijugador ? jugador.nombre + ': ¡' + ulti.nombre + '!' : '¡' + ulti.nombre + '!');
+    this.sonar('habilidad', jugador);
+  }
+
+  factorCrio() {
+    return this.reloj < this.crioHasta ? 1 + this.crioExtra : 1;
+  }
+
+  efectoAparicion(x, y, jefe) {
+    efectoAparicion(this, x, y, jefe);
+    if (jefe) this.cameras.main.shake(600, 0.004);
+    if (this.multijugador) this.eventosRed.push([EVENTO.aparicion, redondear(x), redondear(y), jefe ? 1 : 0]);
+  }
+
+  marcarZona(x, y, duracionMs, radio) {
+    mostrarMarca(this, x, y, duracionMs, radio);
+    if (this.multijugador) this.eventosRed.push([EVENTO.marca, redondear(x), redondear(y), redondear(duracionMs), radio]);
   }
 
   sonar(nombre, jugador = null) {
@@ -605,6 +658,14 @@ export default class GameScene extends Phaser.Scene {
   posicionBorde(jugador) {
     const vista = this.vistaDe(jugador);
     const limites = this.physics.world.bounds;
+    const margen = APARICION.margenVista;
+    const minimo = APARICION.distanciaJugador * APARICION.distanciaJugador;
+    for (let i = 0; i < APARICION.intentos; i++) {
+      const x = Phaser.Math.Between(Math.max(vista.x, limites.x) + margen, Math.min(vista.right, limites.right) - margen);
+      const y = Phaser.Math.Between(Math.max(vista.y, limites.y) + margen, Math.min(vista.bottom, limites.bottom) - margen);
+      const seguro = this.jugadores.every((otro) => !otro.vivo || (otro.x - x) ** 2 + (otro.y - y) ** 2 >= minimo);
+      if (seguro) return { x, y };
+    }
     const m = ENEMIGOS.margenAparicion;
     const candidatos = [
       { x: Phaser.Math.Between(vista.x, vista.right), y: vista.y - m },
@@ -663,7 +724,7 @@ export default class GameScene extends Phaser.Scene {
       const angulo = (i / division.cantidad) * Math.PI * 2;
       const objetivo = this.jugadorMasCercano(enemigo.x, enemigo.y) || this.jugador;
       const multiplicador = (this.oleadas ? this.oleadas.multiplicadorVelocidad : 1) * this.multiplicadorVelocidadEquipo();
-      nuevo.aparecer(division.tipo, enemigo.x + Math.cos(angulo) * 20, enemigo.y + Math.sin(angulo) * 20, multiplicador, objetivo, this.multiplicadorVidaActual());
+      nuevo.aparecer(division.tipo, enemigo.x + Math.cos(angulo) * 20, enemigo.y + Math.sin(angulo) * 20, multiplicador, objetivo, this.multiplicadorVidaActual(), false);
     }
   }
 
@@ -695,7 +756,7 @@ export default class GameScene extends Phaser.Scene {
     } else {
       const vista = this.vistaDe(objetivo);
       x = vista.centerX;
-      y = vista.y - ENEMIGOS.margenAparicion;
+      y = Math.max(vista.y, this.physics.world.bounds.y) + 90;
     }
     enemigo.aparecer(tipo, x, y, 1, objetivo, this.multiplicadorVidaActual());
     this.jefe = enemigo;
@@ -748,13 +809,18 @@ export default class GameScene extends Phaser.Scene {
     this.mostrarOnda(x, y, 0xff7a1a, radio);
     this.explotar(x, y, 0xff7a1a);
     this.sonar('explosion');
+    this.danioArea(x, y, radio, danio, duenio);
+  }
+
+  danioArea(x, y, radio, danio, duenio) {
     const radio2 = radio * radio;
+    const factor = this.factorCrio();
     this.enemigos.getChildren().forEach((enemigo) => {
-      if (!enemigo.active) return;
+      if (!enemigo.active || enemigo.emergiendo()) return;
       const dx = enemigo.x - x;
       const dy = enemigo.y - y;
       if (dx * dx + dy * dy > radio2) return;
-      if (!enemigo.recibirDanio(danio, this.time.now)) return;
+      if (!enemigo.recibirDanio(danio * factor * enemigo.factorDanio(null), this.time.now)) return;
       this.sumarPuntos(enemigo.datos.puntos);
       if (duenio) duenio.registrarBaja();
       this.eliminarEnemigo(enemigo);
@@ -768,7 +834,7 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
     bala.ultimoGolpe = enemigo;
-    const danio = bala.danio * enemigo.factorDanio(bala);
+    const danio = bala.danio * enemigo.factorDanio(bala) * this.factorCrio();
     if (bala.perforacion > 0) bala.perforacion -= 1;
     else bala.desactivar();
     if (!enemigo.recibirDanio(danio, this.time.now)) return;
@@ -784,7 +850,7 @@ export default class GameScene extends Phaser.Scene {
 
   alChocar(jugador, enemigo) {
     if (this.terminado || !enemigo.active || !jugador.vivo) return;
-    if (jugador.tieneEscudo(this.reloj)) {
+    if (jugador.tieneEscudo(this.reloj) || jugador.enSprint(this.reloj)) {
       if (enemigo.datos.jefe) return;
       this.sumarPuntos(enemigo.datos.puntos);
       this.eliminarEnemigo(enemigo);
@@ -811,7 +877,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   caerJugador(jugador) {
-    this.explotar(jugador.x, jugador.y, ESTUDIANTE.sudadera);
+    this.explotar(jugador.x, jugador.y, datosPersonaje(jugador.personaje).colores.ropa);
     this.explotar(jugador.x, jugador.y, 0x8a1010);
     jugador.caer();
     jugador.escudoImagen.setVisible(false);
@@ -834,6 +900,7 @@ export default class GameScene extends Phaser.Scene {
     }
     if (enemigo === this.jefe) this.jefe = null;
     if (this.historiaCtrl) this.historiaCtrl.soltarDedos(enemigo);
+    this.energia.soltar(enemigo);
     enemigo.desactivar();
     if (enemigo.datos.explosion) this.explotarZombie(enemigo);
     if (enemigo.datos.dividir && !this.terminado) this.dividirZombie(enemigo);
@@ -854,6 +921,7 @@ export default class GameScene extends Phaser.Scene {
       if (!posicion) return;
       enemigo.setPosition(posicion.x, posicion.y);
       enemigo.body.reset(posicion.x, posicion.y);
+      enemigo.emerger();
     });
   }
 
@@ -864,6 +932,7 @@ export default class GameScene extends Phaser.Scene {
     this.physics.pause();
     this.selectorRecompensa.cerrar();
     this.botonesHabilidad.mostrar(false);
+    this.hudUlti.mostrar(false);
     this.botonPausa.input.enabled = false;
     const nuevoRecord = Storage.guardarRecord(this.puntos);
     const resultado = {
@@ -902,6 +971,10 @@ export default class GameScene extends Phaser.Scene {
       if (this.historiaCtrl) this.historiaCtrl.resolverOferta(jugador, { tomar: Boolean(datos.tomar), ranura: datos.ranura });
       return;
     }
+    if (datos.t === 'ulti') {
+      jugador.entrada.ulti = true;
+      return;
+    }
     if (datos.t === 'accion') {
       if (['cambiar', 'interactuar'].includes(datos.a)) this.accion(datos.a, jugador);
       return;
@@ -937,6 +1010,8 @@ export default class GameScene extends Phaser.Scene {
     if (jugador.tieneEscudo(this.reloj)) banderas |= BANDERA_JUGADOR.escudo;
     if (jugador.enFrenesi) banderas |= BANDERA_JUGADOR.frenesi;
     if (jugador.esInvulnerable(ahora)) banderas |= BANDERA_JUGADOR.invulnerable;
+    if (jugador.enFuego(this.reloj)) banderas |= BANDERA_JUGADOR.fuego;
+    if (jugador.enSprint(this.reloj)) banderas |= BANDERA_JUGADOR.sprint;
     const velocidad = jugador.local ? jugador.body.velocity : jugador.velocidadRed;
     return [jugador.id, redondear(jugador.x), redondear(jugador.y), redondear(jugador.rotation * 100), redondear(velocidad.x), redondear(velocidad.y), jugador.vidas, banderas];
   }
@@ -956,6 +1031,8 @@ export default class GameScene extends Phaser.Scene {
       pv: pasivasEquipadas(jugador.pasivas),
       armas: jugador.armas.map((ranura) => (ranura ? IDS_ARMA.indexOf(ranura.id) : -1)),
       aa: jugador.armaActual,
+      en: Math.floor(jugador.energia),
+      ur: redondear(Math.max(0, jugador.ultiListaEn - this.reloj)),
       x: redondear(jugador.x),
       y: redondear(jugador.y)
     };
@@ -979,6 +1056,8 @@ export default class GameScene extends Phaser.Scene {
         n: this.secuencia,
         j: jugadores,
         e: this.empaquetarEnemigos(centro),
+        en: this.energia.datosRed((x, y) => this.cerca(centro, x, y)),
+        tr: this.ultis.datosRed((x, y) => this.cerca(centro, x, y)),
         b: this.empaquetarBalas(this.balas, centro, true),
         a: this.empaquetarBalas(this.balasEnemigas, centro, false),
         jf: jefe,
@@ -1004,6 +1083,7 @@ export default class GameScene extends Phaser.Scene {
       let banderas = 0;
       if (enemigo.flashHasta) banderas |= BANDERA_ENEMIGO.golpeado;
       if (enemigo.congelado) banderas |= BANDERA_ENEMIGO.congelado;
+      if (enemigo.emergiendo()) banderas |= BANDERA_ENEMIGO.emergiendo;
       const velocidad = enemigo.body.velocity;
       enemigos.push([i, TIPOS_ENEMIGO.indexOf(enemigo.tipo), redondear(enemigo.x), redondear(enemigo.y), redondear(enemigo.rotation * 100), redondear(velocidad.x), redondear(velocidad.y), banderas]);
     }
@@ -1100,6 +1180,10 @@ export default class GameScene extends Phaser.Scene {
     jugador.rotation = entrada.angulo;
     if (entrada.disparando) this.disparar(jugador, time);
     while (entrada.habilidades.length > 0) this.usarHabilidad(entrada.habilidades.shift(), jugador);
+    if (entrada.ulti) {
+      entrada.ulti = false;
+      this.usarUlti(jugador);
+    }
   }
 
   update(time, delta) {
@@ -1115,7 +1199,11 @@ export default class GameScene extends Phaser.Scene {
       }
       jugador.actualizarEfectos(this.reloj);
       jugador.escudoImagen.setVisible(jugador.vivo && jugador.tieneEscudo(this.reloj)).setPosition(jugador.x, jugador.y);
+      actualizarAnillo(this, jugador, jugador.vivo && jugador.enFuego(this.reloj), jugador.x, jugador.y, jugador.radioFuego, time);
     }
+    this.energia.actualizar(delta);
+    this.ultis.actualizar();
+    this.hudUlti.actualizar(this.jugador.energia, this.jugador.ultiListaEn - this.reloj);
 
     if (this.historiaCtrl) {
       this.historiaCtrl.actualizar(delta);

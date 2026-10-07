@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { ANCHO, ALTO, RED } from '../config.js';
+import { ANCHO, ALTO, RED, PERSONAJES } from '../config.js';
+import { IDS_PERSONAJE, datosPersonaje, textoPasivasEquipo } from '../systems/Personajes.js';
 import Red, { ID_ANFITRION } from '../systems/Red.js';
 import Storage from '../systems/Storage.js';
 
@@ -21,6 +22,10 @@ const PLANTILLA = `
       <p class="lobby-codigo">Código: <b data-campo="codigo-sala"></b></p>
       <p class="lobby-ayuda">Compártelo con quienes estén en tu misma WiFi (máx. ${RED.maxJugadores} jugadores)</p>
       <ul data-campo="lista"></ul>
+      <p class="lobby-ayuda">Tu personaje</p>
+      <div class="lobby-personajes" data-campo="personajes"></div>
+      <p class="lobby-ayuda" data-campo="ulti"></p>
+      <p class="lobby-ayuda lobby-equipo" data-campo="pasivas"></p>
       <div class="lobby-fila" data-campo="modos">
         <button data-accion="modo-supervivencia" class="lobby-modo">Supervivencia</button>
         <button data-accion="modo-historia" class="lobby-modo">Historia</button>
@@ -56,10 +61,11 @@ export default class LobbyScene extends Phaser.Scene {
     this.panel.addEventListener('keyup', (evento) => evento.stopPropagation());
     this.panel.addEventListener('click', (evento) => {
       const boton = evento.target.closest('button');
-      if (boton && !boton.disabled) this.alAccion(boton.dataset.accion);
+      if (boton && !boton.disabled) this.alAccion(boton.dataset.accion, boton.dataset.id);
     });
 
     this.campo('nombre').value = Storage.obtenerNombre();
+    this.crearBotonesPersonaje();
     this.events.once('shutdown', () => this.limpiar());
 
     if (this.red) {
@@ -86,8 +92,25 @@ export default class LobbyScene extends Phaser.Scene {
     });
   }
 
-  alAccion(accion) {
+  crearBotonesPersonaje() {
+    const contenedor = this.campo('personajes');
+    IDS_PERSONAJE.forEach((id) => {
+      const datos = PERSONAJES[id];
+      const boton = document.createElement('button');
+      boton.dataset.accion = 'personaje';
+      boton.dataset.id = id;
+      boton.className = 'lobby-personaje';
+      boton.style.borderLeftColor = '#' + datos.colores.ropa.toString(16).padStart(6, '0');
+      boton.textContent = datos.nombre + ' · ' + datos.rol;
+      contenedor.appendChild(boton);
+    });
+  }
+
+  alAccion(accion, id) {
     switch (accion) {
+      case 'personaje':
+        this.red.elegirPersonaje(id);
+        break;
       case 'crear':
         this.crear();
         break;
@@ -181,9 +204,17 @@ export default class LobbyScene extends Phaser.Scene {
     this.boton('modo-historia').classList.toggle('lobby-activo', historia);
     const lista = this.campo('lista');
     lista.replaceChildren();
+    const propio = this.red.personajePropio();
+    this.campo('personajes').querySelectorAll('button').forEach((boton) => {
+      boton.classList.toggle('lobby-activo', boton.dataset.id === propio);
+    });
+    const ulti = datosPersonaje(propio).ulti;
+    this.campo('ulti').textContent = 'Ulti: ' + ulti.nombre + ' — ' + ulti.texto.split('\n').join(' ');
+    this.campo('pasivas').textContent = 'Pasivas del equipo: ' + textoPasivasEquipo(jugadores.map((jugador) => jugador.personaje));
     jugadores.forEach((jugador) => {
       const elemento = document.createElement('li');
-      let texto = jugador.nombre;
+      const personaje = datosPersonaje(jugador.personaje);
+      let texto = jugador.nombre + ' — ' + personaje.nombre + ' (' + personaje.rol + ')';
       if (jugador.id === ID_ANFITRION) texto += ' (anfitrión)';
       if (jugador.id === this.red.miId) texto += ' (tú)';
       elemento.textContent = texto;

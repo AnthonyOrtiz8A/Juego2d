@@ -35,7 +35,7 @@ export const BALA = {
   velocidad: 640,
   danio: 1,
   vidaMs: 1100,
-  poolMax: 160,
+  poolMax: 220,
   distanciaCanon: 20
 };
 
@@ -363,4 +363,76 @@ export const HISTORIA = {
     { mundo: 3, numero: 4, nombre: 'Puente de escape', tema: 'puente', inicio: 10, oleadas: 3, jefe: 'jefe' }
   ],
   mundos: ['Las afueras', 'El centro', 'La salida']
+};
+
+export const ENERGIA = {
+  maximo: 100,
+  probabilidad: 0.5,
+  valor: 6,
+  valorJefe: 40,
+  radioRecoger: 26,
+  radioIman: 140,
+  velocidadIman: 420,
+  poolMax: 60,
+  vidaMs: 25000
+};
+
+export const APARICION = {
+  duracionMs: 650,
+  duracionJefeMs: 1400,
+  escalaInicial: 0.25,
+  distanciaJugador: 240,
+  margenVista: 50,
+  intentos: 14
+};
+
+export const PERSONAJES = {
+  estudiante: {
+    nombre: 'Leo', rol: 'Estudiante', accesorio: 'mochila',
+    colores: { ropa: 0x2f6fd6, ropaSombra: 0x245bb3, pelo: 0x3b2416, piel: 0xf1c27d, extra: 0xc0392b },
+    pasiva: { texto: 'Equipo: +10 % velocidad', mods: { velocidad: 0.1 } },
+    ulti: { id: 'lluvia', nombre: 'Lluvia de balas', texto: 'Disparas en todas direcciones\ndurante 3 segundos', costo: 100, enfriamientoMs: 40000, rafagas: 20, balas: 10, intervaloMs: 150, danio: 1.5 }
+  },
+  enfermera: {
+    nombre: 'Sofía', rol: 'Enfermera', accesorio: 'cofia',
+    colores: { ropa: 0xe8f0f2, ropaSombra: 0xbfd0d6, pelo: 0x6b3a1f, piel: 0xd9a27a, extra: 0xc0392b },
+    pasiva: { texto: 'Equipo: +1 vida máxima', mods: { vidas: 1 } },
+    ulti: { id: 'botiquin', nombre: 'Botiquín', texto: 'Cura 2 vidas a todo el equipo,\nrevive a los caídos y da\nescudo 2 segundos', costo: 100, enfriamientoMs: 55000, curacion: 2, escudoMs: 2000 }
+  },
+  policia: {
+    nombre: 'Marco', rol: 'Policía', accesorio: 'gorraPolicia',
+    colores: { ropa: 0x1f2f5a, ropaSombra: 0x14203d, pelo: 0x1b1b1b, piel: 0xc68e5e, extra: 0xf0c94a },
+    pasiva: { texto: 'Equipo: +10 % de daño', mods: { danio: 0.1 } },
+    ulti: { id: 'torreta', nombre: 'Torreta', texto: 'Despliega una torreta que\ndispara sola durante\n10 segundos', costo: 100, enfriamientoMs: 45000, duracionMs: 10000, cadenciaMs: 160, alcance: 480, danio: 1.2 }
+  },
+  bombero: {
+    nombre: 'Raúl', rol: 'Bombero', accesorio: 'cascoBombero',
+    colores: { ropa: 0xc9a227, ropaSombra: 0x8a6e1a, pelo: 0x2a1a10, piel: 0xe0b48a, extra: 0xc0392b },
+    pasiva: { texto: 'Equipo: +25 % invulnerabilidad\ntras un golpe', mods: { invulnerabilidad: 0.25 } },
+    ulti: { id: 'fuego', nombre: 'Anillo de fuego', texto: 'Un anillo de fuego te rodea\n6 segundos y quema a los\nzombies cercanos', costo: 100, enfriamientoMs: 45000, duracionMs: 6000, radio: 130, intervaloMs: 250, danio: 1.5 }
+  },
+  mecanica: {
+    nombre: 'Valeria', rol: 'Mecánica', accesorio: 'gafas',
+    colores: { ropa: 0x4a6a8a, ropaSombra: 0x34506b, pelo: 0xb5651d, piel: 0xf1c27d, extra: 0x5a5a5a },
+    pasiva: { texto: 'Equipo: -15 % enfriamiento\nde habilidades', mods: { enfriamiento: -0.15 } },
+    ulti: { id: 'misiles', nombre: 'Enjambre de misiles', texto: 'Lanza 8 misiles explosivos\na los zombies más cercanos', costo: 100, enfriamientoMs: 40000, misiles: 8, danio: 4, radio: 75, velocidad: 520 }
+  },
+  deportista: {
+    nombre: 'Diego', rol: 'Deportista', accesorio: 'banda',
+    colores: { ropa: 0x2fa34a, ropaSombra: 0x217a36, pelo: 0x101010, piel: 0x8d5a3b, extra: 0xe63946 },
+    pasiva: { texto: 'Equipo: +12 % cadencia', mods: { cadencia: 0.12 } },
+    ulti: { id: 'sprint', nombre: 'Sprint imparable', texto: '5 segundos de velocidad\nextrema, invulnerable y\narrollando zombies', costo: 100, enfriamientoMs: 40000, duracionMs: 5000, multiplicador: 1.8 }
+  },
+  cientifica: {
+    nombre: 'Ana', rol: 'Científica', accesorio: 'bata',
+    colores: { ropa: 0xf2f2f2, ropaSombra: 0xc8c8c8, pelo: 0x1b1b1b, piel: 0xf3d2b3, extra: 0x3ea8ff },
+    pasiva: { texto: 'Equipo: +30 % de energía\nobtenida', mods: { energia: 0.3 } },
+    ulti: { id: 'crio', nombre: 'Bomba criogénica', texto: 'Congela por completo a los\nzombies 4 segundos y reciben\n+50 % de daño', costo: 100, enfriamientoMs: 50000, duracionMs: 4000, danioExtra: 0.5 }
+  },
+  militar: {
+    nombre: 'Kenji', rol: 'Militar', accesorio: 'cascoMilitar',
+    colores: { ropa: 0x4b5a33, ropaSombra: 0x3a4627, pelo: 0x1b1b1b, piel: 0xe8c39e, extra: 0x6b5a3a },
+    pasiva: { texto: 'Equipo: las balas atraviesan\n1 zombie más', mods: { perforacion: 1 } },
+    ulti: { id: 'bombardeo', nombre: 'Ataque aéreo', texto: 'Bombardea 6 zonas marcadas\nalrededor tuyo', costo: 100, enfriamientoMs: 50000, bombas: 6, radio: 110, danio: 8, alcance: 260, avisoMs: 700, separacionMs: 250 }
+  }
 };

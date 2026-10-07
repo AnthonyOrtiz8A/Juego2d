@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ARMAS, PASIVAS, MEJORAS, COFRES, HABILIDADES, LIMITES } from '../config.js';
+import { ARMAS, PASIVAS, MEJORAS, COFRES, HABILIDADES, LIMITES, ENERGIA } from '../config.js';
 import { DESCRIPCIONES } from './Habilidades.js';
 
 export const TIPOS_COFRE = Object.keys(COFRES.tipos);
@@ -40,7 +40,7 @@ export function estadisticasArma(armaId, mejoras, mods = {}) {
     dispersion: arma.dispersion + (arma.dispersion === 0 && nivel('canon') > 0 ? 0.12 : 0) + (mods.dispersion || 0),
     velocidad: arma.velocidad,
     vidaMs: arma.vidaMs * (1 + nivel('alcance') * MEJORAS.alcance.valor),
-    perforacion: arma.perforacion + nivel('calibre') * MEJORAS.calibre.valor,
+    perforacion: arma.perforacion + nivel('calibre') * MEJORAS.calibre.valor + (mods.perforacion || 0),
     critico: nivel('critico') * MEJORAS.critico.valor,
     explosivo: arma.explosivo || 0
   };
@@ -115,7 +115,8 @@ export function exportarEstado(jugador) {
     mejoras: { ...jugador.mejoras },
     pasivas: { ...jugador.pasivas },
     ranuras: { ...jugador.habilidades.ranuras },
-    vidas: Math.max(1, jugador.vidas)
+    vidas: Math.max(1, jugador.vidas),
+    energia: jugador.energia
   };
 }
 
@@ -150,4 +151,5 @@ export function importarEstado(jugador, estado) {
     });
   }
   jugador.vidas = Math.min(jugador.vidasMaximas(), Math.max(1, Number(estado.vidas) || 1));
+  jugador.energia = Math.min(ENERGIA.maximo, Math.max(0, Number(estado.energia) || 0));
 }

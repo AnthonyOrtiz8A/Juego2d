@@ -1,10 +1,23 @@
 import Phaser from 'phaser';
-import { JUGADOR, HABILIDADES, PASIVAS, MEJORAS, MUNICION } from '../config.js';
+import { JUGADOR, HABILIDADES, PASIVAS, MEJORAS, MUNICION, ENERGIA } from '../config.js';
 import { estadisticasArma, modificadoresPasivas, pasivasEquipadas, mejorasEquipadas } from '../systems/Recompensas.js';
+import { personajeValido, sumarModificadores } from '../systems/Personajes.js';
+
+const COLOR_SPRINT = 0xfff27a;
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, opciones = {}) {
-    super(scene, x, y, 'jugador');
+    const personaje = personajeValido(opciones.personaje);
+    super(scene, x, y, 'jugador-' + personaje);
+    this.personaje = personaje;
+    this.modsEquipo = {};
+    this.energia = 0;
+    this.ultiListaEn = 0;
+    this.ultiDuracion = 1;
+    this.sprintHasta = 0;
+    this.multiplicadorSprint = 1;
+    this.fuegoHasta = 0;
+    this.radioFuego = 0;
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.body.setCircle(JUGADOR.radio, this.width / 2 - JUGADOR.radio, this.height / 2 - JUGADOR.radio);
@@ -43,6 +56,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.escudoHasta = 0;
     this.frenesiHasta = 0;
     this.enFrenesi = false;
+    this.efectoVisible = '';
   }
 
   mover(dx, dy, reloj) {
@@ -60,7 +74,19 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   modificadores() {
-    return modificadoresPasivas(this.pasivas);
+    return sumarModificadores(modificadoresPasivas(this.pasivas), this.modsEquipo);
+  }
+
+  sumarEnergia(cantidad) {
+    this.energia = Math.min(ENERGIA.maximo, this.energia + cantidad * (1 + this.modificador('energia')));
+  }
+
+  enSprint(reloj) {
+    return reloj < this.sprintHasta;
+  }
+
+  enFuego(reloj) {
+    return reloj < this.fuegoHasta;
   }
 
   modificador(clave) {
@@ -76,7 +102,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   velocidadMovimiento() {
-    return JUGADOR.velocidad * Math.max(0.4, 1 + this.modificador('velocidad'));
+    const sprint = this.enSprint(this.scene.reloj) ? this.multiplicadorSprint : 1;
+    return JUGADOR.velocidad * Math.max(0.4, 1 + this.modificador('velocidad')) * sprint;
   }
 
   vidasMaximas() {
@@ -158,10 +185,14 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   actualizarEfectos(reloj) {
-    const frenesi = reloj < this.frenesiHasta;
-    if (frenesi === this.enFrenesi) return;
-    this.enFrenesi = frenesi;
-    if (frenesi) this.setTint(HABILIDADES.tipos.frenesi.color);
+    this.enFrenesi = reloj < this.frenesiHasta;
+    let efecto = '';
+    if (this.enSprint(reloj)) efecto = 'sprint';
+    else if (this.enFrenesi) efecto = 'frenesi';
+    if (efecto === this.efectoVisible) return;
+    this.efectoVisible = efecto;
+    if (efecto === 'sprint') this.setTint(COLOR_SPRINT);
+    else if (efecto === 'frenesi') this.setTint(HABILIDADES.tipos.frenesi.color);
     else this.clearTint();
   }
 
