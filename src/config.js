@@ -172,3 +172,19 @@ export const PACMAN = {
     '###################'
   ]
 };
+
+export const RED = {
+  prefijo: 'shooter2d-zombies-',
+  maxJugadores: 4,
+  largoNombre: 12,
+  largoCodigo: 4,
+  intentosCodigo: 4,
+  esperaConexionMs: 10000,
+  intervaloSnapshotMs: 50,
+  intervaloEntradaMs: 50,
+  suavizado: 0.45,
+  extrapolacionMaxMs: 150,
+  vidasAlRevivir: 1,
+  reapuntadoEnemigoMs: 500,
+  separacionAparicion: 60
+};

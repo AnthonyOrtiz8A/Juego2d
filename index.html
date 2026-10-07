@@ -2,9 +2,15 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#0b0e1a" />
-    <link rel="icon" href="data:," />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Shooter 2D" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icono.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icono.svg" />
     <title>Shooter 2D</title>
     <style>
       html, body {
@@ -19,15 +25,17 @@
         user-select: none;
       }
       #juego {
+        position: relative;
         width: 100%;
         height: 100%;
+        background: #05060c;
       }
       canvas {
         display: block;
       }
       #girar {
         display: none;
-        position: fixed;
+        position: absolute;
         inset: 0;
         align-items: center;
         justify-content: center;
@@ -43,11 +51,132 @@
           display: flex;
         }
       }
+      .lobby {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        box-sizing: border-box;
+        z-index: 5;
+        font-family: monospace;
+        color: #ffffff;
+      }
+      .lobby-caja {
+        width: min(420px, 100%);
+        max-height: 100%;
+        overflow-y: auto;
+        box-sizing: border-box;
+        padding: 18px 20px;
+        background: rgba(13, 17, 33, 0.94);
+        border: 2px solid #3ee8ff;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .lobby-caja [data-vista] {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .lobby-caja [hidden] {
+        display: none !important;
+      }
+      .lobby h2 {
+        margin: 0;
+        text-align: center;
+        color: #3ee8ff;
+        font-size: 24px;
+      }
+      .lobby-etiqueta {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 14px;
+        color: #9aa4c7;
+      }
+      .lobby input {
+        font: bold 18px monospace;
+        padding: 10px;
+        border-radius: 6px;
+        border: 2px solid #2c3766;
+        background: #0b0e1a;
+        color: #ffffff;
+        -webkit-user-select: text;
+        user-select: text;
+        min-width: 0;
+      }
+      .lobby input[data-campo="codigo"] {
+        flex: 1;
+        text-transform: uppercase;
+        letter-spacing: 4px;
+      }
+      .lobby button {
+        font: bold 18px monospace;
+        padding: 11px;
+        border-radius: 6px;
+        border: 2px solid #3ee8ff;
+        background: #1d2442;
+        color: #ffffff;
+        cursor: pointer;
+      }
+      .lobby button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .lobby-secundario {
+        border-color: #4a5170 !important;
+        color: #9aa4c7 !important;
+      }
+      .lobby-fila {
+        display: flex;
+        gap: 8px;
+      }
+      .lobby-codigo {
+        margin: 0;
+        text-align: center;
+        font-size: 20px;
+      }
+      .lobby-codigo b {
+        color: #fff27a;
+        letter-spacing: 6px;
+        font-size: 30px;
+      }
+      .lobby-ayuda {
+        margin: 0;
+        text-align: center;
+        font-size: 13px;
+        color: #9aa4c7;
+      }
+      .lobby ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .lobby li {
+        padding: 8px 10px;
+        background: #1d2442;
+        border-radius: 6px;
+        font-size: 16px;
+      }
+      .lobby-estado {
+        margin: 0;
+        min-height: 18px;
+        text-align: center;
+        font-size: 14px;
+        color: #ff8fa3;
+      }
     </style>
   </head>
   <body>
-    <div id="juego"></div>
-    <div id="girar">Gira el dispositivo para jugar en horizontal</div>
+    <div id="juego">
+      <div id="girar">Gira el dispositivo para jugar en horizontal</div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

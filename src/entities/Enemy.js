@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ENEMIGOS, HABILIDADES } from '../config.js';
+import { ENEMIGOS, HABILIDADES, RED } from '../config.js';
 
 export default class Enemy extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y) {
@@ -14,6 +14,7 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.congelado = false;
     this.proximoDisparo = 0;
     this.sentido = 1;
+    this.proximoObjetivo = 0;
     this.setDepth(5);
   }
 
@@ -56,6 +57,12 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.clearTint();
     }
 
+    if (time >= this.proximoObjetivo) {
+      this.proximoObjetivo = time + RED.reapuntadoEnemigoMs;
+      const cercano = this.scene.jugadorMasCercano(this.x, this.y);
+      if (cercano) this.objetivo = cercano;
+    }
+
     const congelacion = HABILIDADES.tipos.congelar;
     const lento = this.scene.reloj < this.scene.congeladoHasta;
     if (!this.flashHasta && lento !== this.congelado) {
@@ -89,7 +96,7 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     const escena = this.scene;
     if (escena.reloj < this.proximoDisparo) return;
     if (distancia > datos.distancia + datos.alcanceExtra) return;
-    if (!escena.cameras.main.worldView.contains(this.x, this.y)) return;
+    if (!escena.enVistaDe(this.objetivo, this.x, this.y)) return;
     this.proximoDisparo = escena.reloj + datos.cadenciaMs * (lento ? 2 : 1);
     escena.dispararEnemigo(this.x, this.y, haciaJugador);
   }

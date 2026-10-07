@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { BALA } from '../config.js';
+import { BALA, MUNDO } from '../config.js';
 
 const MARGEN = 40;
 
@@ -24,13 +24,12 @@ export default class Bullet extends Phaser.Physics.Arcade.Sprite {
   preUpdate(time, delta) {
     super.preUpdate(time, delta);
     if (!this.active) return;
-    const vista = this.scene.cameras.main.worldView;
     if (
       time > this.expiraEn ||
-      this.x < vista.x - MARGEN ||
-      this.x > vista.right + MARGEN ||
-      this.y < vista.y - MARGEN ||
-      this.y > vista.bottom + MARGEN
+      this.x < -MARGEN ||
+      this.x > MUNDO.ancho + MARGEN ||
+      this.y < -MARGEN ||
+      this.y > MUNDO.alto + MARGEN
     ) {
       this.desactivar();
     }

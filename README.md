@@ -37,6 +37,25 @@ Los enfriamientos se detienen mientras el juego está en pausa o eligiendo poder
 - El récord se guarda en el navegador (`localStorage`).
 - El sonido (generado con WebAudio) está desactivado por defecto; se activa desde el menú.
 
+## Multijugador (hasta 4 jugadores)
+
+Cooperativo: todos contra las mismas oleadas, con puntaje de equipo.
+
+1. Un jugador pulsa **Multijugador → Crear partida** y recibe un código de 4 letras.
+2. Los demás (hasta 3 más) pulsan **Multijugador**, escriben su nombre y el código, y pulsan **Unirse**.
+3. El anfitrión pulsa **Empezar partida**.
+
+- Funciona con WebRTC (PeerJS): los dispositivos se conectan directamente entre sí. Para encontrarse usan el servidor público gratuito de PeerJS, así que se necesita internet al conectar; en la misma WiFi el tráfico del juego va directo entre los dispositivos.
+- El anfitrión ejecuta la partida: si cierra la pestaña o la deja en segundo plano, el juego se detiene para todos.
+- Si un jugador pierde todas sus vidas queda caído y revive con 1 vida al empezar la siguiente oleada. La partida termina cuando caen todos.
+- En multijugador no hay pausa ni selector de poderes: al desbloquear Q (oleada 4) y R (oleada 8) cada jugador recibe una habilidad al azar.
+- Al terminar, el anfitrión puede volver a la sala con los mismos jugadores.
+
+## Pantalla completa
+
+- Botón **Pantalla completa** en el menú principal. En celulares Android se activa sola al primer toque y bloquea la orientación horizontal.
+- En iPhone, Safari no permite pantalla completa en páginas web: usa **Compartir → Agregar a pantalla de inicio** y abre el juego desde ese ícono (se abre sin barras del navegador).
+
 ## Minijuego: Pac-Man
 
 Desde el menú principal, el botón **Minijuego: Pac-Man** abre un Pac-Man completo: laberinto con 150 puntos y 4 súper puntos, túnel lateral, y 4 fantasmas con su comportamiento clásico (Blinky te persigue, Pinky se adelanta, Inky flanquea y Clyde huye si se acerca), alternando entre dispersión y persecución. Al comer un súper punto los fantasmas se vuelven azules y valen 200, 400, 800 y 1600 puntos; sus ojos regresan a la casa para revivir.
@@ -116,9 +135,9 @@ Como `vite.config.js` usa `base: './'`, el build funciona en cualquier ruta sin 
 └── src/
     ├── main.js              Configuración de Phaser
     ├── config.js            Valores de balance (velocidades, vida, cadencia, oleadas…)
-    ├── scenes/              Boot (genera texturas), Menu, Game, GameOver, Pacman
+    ├── scenes/              Boot (genera texturas), Menu, Game, GameOver, Pacman, Lobby, Cliente
     ├── entities/            Player, Enemy, Bullet
-    └── systems/             WaveManager, TouchControls, Storage, Sonido, Interfaz, Dibujos,
+    └── systems/             WaveManager, TouchControls, Storage, Sonido, Interfaz, Dibujos, Red, Protocolo,
                              Habilidades, BotonesHabilidad, SelectorHabilidades
 ```
 

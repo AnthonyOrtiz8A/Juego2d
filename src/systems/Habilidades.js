@@ -11,8 +11,7 @@ export const DESCRIPCIONES = {
 };
 
 const EJECUTAR = {
-  dash(scene, datos) {
-    const jugador = scene.jugador;
+  dash(scene, datos, jugador) {
     const velocidad = jugador.body.velocity;
     const angulo = velocidad.lengthSq() > 1 ? Math.atan2(velocidad.y, velocidad.x) : jugador.rotation;
     jugador.iniciarDash(scene.reloj + datos.duracionMs, Math.cos(angulo) * datos.velocidad, Math.sin(angulo) * datos.velocidad);
@@ -20,12 +19,11 @@ const EJECUTAR = {
     scene.explotar(jugador.x, jugador.y, datos.color);
   },
 
-  escudo(scene, datos) {
-    scene.jugador.escudoHasta = scene.reloj + datos.duracionMs;
+  escudo(scene, datos, jugador) {
+    jugador.escudoHasta = scene.reloj + datos.duracionMs;
   },
 
-  onda(scene, datos) {
-    const jugador = scene.jugador;
+  onda(scene, datos, jugador) {
     const radio2 = datos.radio * datos.radio;
     const lista = scene.enemigos.getChildren();
     for (let i = 0; i < lista.length; i++) {
@@ -44,11 +42,10 @@ const EJECUTAR = {
         enemigo.y += (dy / distancia) * datos.empuje;
       }
     }
-    scene.mostrarOnda(datos.color, datos.radio);
+    scene.mostrarOnda(jugador.x, jugador.y, datos.color, datos.radio);
   },
 
-  rafaga(scene, datos) {
-    const jugador = scene.jugador;
+  rafaga(scene, datos, jugador) {
     const paso = (Math.PI * 2) / datos.balas;
     for (let i = 0; i < datos.balas; i++) {
       const bala = scene.balas.getFirstDead(false);
@@ -63,19 +60,20 @@ const EJECUTAR = {
     }
   },
 
-  frenesi(scene, datos) {
-    scene.jugador.frenesiHasta = scene.reloj + datos.duracionMs;
+  frenesi(scene, datos, jugador) {
+    jugador.frenesiHasta = scene.reloj + datos.duracionMs;
   },
 
   congelar(scene, datos) {
     scene.congeladoHasta = scene.reloj + datos.duracionMs;
-    scene.cameras.main.flash(200, 140, 210, 255);
+    scene.destello();
   }
 };
 
 export default class GestorHabilidades {
-  constructor(scene) {
+  constructor(scene, jugador) {
     this.scene = scene;
+    this.jugador = jugador;
     this.ranuras = { E: HABILIDADES.inicial, Q: null, R: null };
     this.listaEn = { E: 0, Q: 0, R: 0 };
   }
@@ -108,7 +106,7 @@ export default class GestorHabilidades {
     if (!id || reloj < this.listaEn[tecla]) return false;
     const datos = HABILIDADES.tipos[id];
     this.listaEn[tecla] = reloj + datos.enfriamientoMs;
-    EJECUTAR[id](this.scene, datos);
+    EJECUTAR[id](this.scene, datos, this.jugador);
     return true;
   }
 
