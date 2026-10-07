@@ -4,8 +4,10 @@ import Storage from '../systems/Storage.js';
 import Sonido from '../systems/Sonido.js';
 import { crearTexto, crearBoton } from '../systems/Interfaz.js';
 import { esDispositivoTactil } from '../systems/TouchControls.js';
+import { nivelHistoria } from '../systems/Mapas.js';
 
-const ALTO_BOTON = 46;
+const ALTO_BOTON = 42;
+const ANCHO_BOTON = 300;
 let pantallaCompletaIntentada = false;
 
 export default class MenuScene extends Phaser.Scene {
@@ -28,15 +30,16 @@ export default class MenuScene extends Phaser.Scene {
     crearTexto(this, ANCHO / 2, 168, 'Sobrevive a las oleadas infinitas', 18, '#9aa4c7').setOrigin(0.5);
     crearTexto(this, ANCHO / 2, 205, 'Récord: ' + Storage.obtenerRecord(), 22, '#fff27a').setOrigin(0.5);
 
-    crearBoton(this, ANCHO / 2, 262, 'Jugar', () => this.jugar(), 280, ALTO_BOTON);
-    crearBoton(this, ANCHO / 2, 316, 'Multijugador', () => this.scene.start('Lobby'), 280, ALTO_BOTON);
-    crearBoton(this, ANCHO / 2, 370, 'Minijuego: Pac-Man', () => this.scene.start('Pacman'), 280, ALTO_BOTON);
-    const botonSonido = crearBoton(this, ANCHO / 2, 424, this.textoSonido(), () => {
+    crearBoton(this, ANCHO / 2, 252, 'Supervivencia', () => this.jugar(), ANCHO_BOTON, ALTO_BOTON);
+    this.crearBotonHistoria(300);
+    crearBoton(this, ANCHO / 2, 348, 'Multijugador', () => this.scene.start('Lobby'), ANCHO_BOTON, ALTO_BOTON);
+    crearBoton(this, ANCHO / 2, 396, 'Minijuego: Pac-Man', () => this.scene.start('Pacman'), ANCHO_BOTON, ALTO_BOTON);
+    const botonSonido = crearBoton(this, ANCHO / 2, 444, this.textoSonido(), () => {
       Sonido.alternar();
       botonSonido.etiqueta.setText(this.textoSonido());
-    }, 280, ALTO_BOTON);
+    }, ANCHO_BOTON, ALTO_BOTON);
 
-    crearTexto(this, ANCHO / 2, 520, this.textoControles(), 16, '#9aa4c7').setOrigin(0.5).setLineSpacing(6);
+    crearTexto(this, ANCHO / 2, 528, this.textoControles(), 15, '#9aa4c7').setOrigin(0.5).setLineSpacing(5);
     if (this.aviso) crearTexto(this, ANCHO / 2, 578, this.aviso, 16, '#ff4d6d').setOrigin(0.5);
 
     this.crearPantallaCompleta();
@@ -44,6 +47,30 @@ export default class MenuScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-ENTER', () => this.jugar());
     this.input.keyboard.on('keydown-SPACE', (evento) => {
       if (!evento.repeat) this.jugar();
+    });
+  }
+
+  crearBotonHistoria(y) {
+    const guardada = Storage.obtenerHistoria();
+    const nivel = guardada ? nivelHistoria(guardada.nivel) : null;
+    if (!nivel) {
+      crearBoton(this, ANCHO / 2, y, 'Modo historia', () => this.iniciarHistoria(null), ANCHO_BOTON, ALTO_BOTON);
+      return;
+    }
+    const texto = 'Continuar historia ' + nivel.mundo + '-' + nivel.numero;
+    crearBoton(this, ANCHO / 2, y, texto, () => this.iniciarHistoria(guardada), ANCHO_BOTON, ALTO_BOTON);
+    crearBoton(this, ANCHO / 2 + ANCHO_BOTON / 2 + 70, y, 'Nueva', () => {
+      Storage.borrarHistoria();
+      this.iniciarHistoria(null);
+    }, 120, ALTO_BOTON);
+  }
+
+  iniciarHistoria(guardada) {
+    this.scene.start('Game', {
+      modo: 'historia',
+      nivel: guardada ? guardada.nivel : 0,
+      estado: guardada ? guardada.estado : null,
+      puntos: guardada ? guardada.puntos : 0
     });
   }
 
@@ -82,6 +109,6 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   jugar() {
-    this.scene.start('Game');
+    this.scene.start('Game', { modo: 'supervivencia' });
   }
 }

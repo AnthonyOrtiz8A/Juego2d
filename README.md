@@ -37,6 +37,26 @@ Los enfriamientos se detienen mientras el juego está en pausa o eligiendo poder
 - El récord se guarda en el navegador (`localStorage`).
 - El sonido (generado con WebAudio) está desactivado por defecto; se activa desde el menú.
 
+## Modo historia
+
+Cruza la ciudad infestada en 3 mundos y 10 niveles, cada uno con su propia ambientación:
+
+| Mundo | Niveles |
+|-------|---------|
+| 1 · Las afueras | Barrio residencial → Avenida principal → Plaza del centro (**minijefe: El Bruto**) |
+| 2 · El centro | Distrito financiero → Hospital general → Zona industrial (**minijefe: El Bruto**) |
+| 3 · La salida | Puerto → Autopista → Base militar → Puente de escape (**jefe final: La Abominación**) |
+
+- Cada nivel tiene un número fijo de oleadas; el último de cada mundo es más difícil y termina con un jefe.
+- Los jefes embisten tras un aviso; la Abominación además lanza lluvias de ácido e invoca zombies. Con menos de la mitad de vida se enfurecen.
+- **Cofres:** al terminar cada nivel aparecen tantos cofres como jugadores, más uno. Quédate encima de un cofre para abrirlo y elige si tomas la recompensa o conservas lo que tienes. Cada tipo tiene su diseño:
+  - Azul con rayo: **habilidad activa** (eliges en qué tecla ponerla: E, Q o R).
+  - Caja militar verde con pistola: **arma** (pistola, escopeta, subfusil, rifle).
+  - Madera con corazón verde: **habilidad pasiva** (vitalidad, agilidad, regeneración, vampiro, blindaje, recarga rápida).
+  - Morado y dorado con flecha: **mejora** del arma (daño, cadencia, perforación, balas extra, alcance).
+- El equipo se conserva de un nivel a otro. En solitario el progreso se guarda al empezar cada nivel (**Continuar historia** en el menú) y si caes puedes reintentar el nivel.
+- La historia también se puede jugar en multijugador: el anfitrión elige el modo en la sala.
+
 ## Multijugador (hasta 4 jugadores)
 
 Cooperativo: todos contra las mismas oleadas, con puntaje de equipo.
@@ -47,12 +67,14 @@ Cooperativo: todos contra las mismas oleadas, con puntaje de equipo.
 
 - Funciona con WebRTC (PeerJS): los dispositivos se conectan directamente entre sí. Para encontrarse usan el servidor público gratuito de PeerJS, así que se necesita internet al conectar; en la misma WiFi el tráfico del juego va directo entre los dispositivos.
 - El anfitrión ejecuta la partida: si cierra la pestaña o la deja en segundo plano, el juego se detiene para todos.
+- Para reducir el retraso, cada jugador mueve y dispara a su personaje al instante en su propia pantalla (predicción local) y el anfitrión solo corrige cuando hace falta. Las posiciones viajan por un canal rápido sin orden y cada jugador recibe solo lo que está cerca de él.
 - Si un jugador pierde todas sus vidas queda caído y revive con 1 vida al empezar la siguiente oleada. La partida termina cuando caen todos.
 - En multijugador no hay pausa ni selector de poderes: al desbloquear Q (oleada 4) y R (oleada 8) cada jugador recibe una habilidad al azar.
 - Al terminar, el anfitrión puede volver a la sala con los mismos jugadores.
 
 ## Pantalla completa
 
+- El juego ocupa toda la pantalla: el ancho se adapta a la proporción del dispositivo (16:9, 20:9…) en lugar de dejar bandas negras.
 - Botón **Pantalla completa** en el menú principal. En celulares Android se activa sola al primer toque y bloquea la orientación horizontal.
 - En iPhone, Safari no permite pantalla completa en páginas web: usa **Compartir → Agregar a pantalla de inicio** y abre el juego desde ese ícono (se abre sin barras del navegador).
 
@@ -138,6 +160,7 @@ Como `vite.config.js` usa `base: './'`, el build funciona en cualquier ruta sin 
     ├── scenes/              Boot (genera texturas), Menu, Game, GameOver, Pacman, Lobby, Cliente
     ├── entities/            Player, Enemy, Bullet
     └── systems/             WaveManager, TouchControls, Storage, Sonido, Interfaz, Dibujos, Red, Protocolo,
+                             Mapas, Recompensas, SelectorRecompensa,
                              Habilidades, BotonesHabilidad, SelectorHabilidades
 ```
 

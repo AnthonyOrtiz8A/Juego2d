@@ -31,6 +31,14 @@ export const ZOMBIES = {
   tirador: {
     tamano: 42, hombros: 12, profundidad: 18, cabeza: 7, alcance: 6, grosorBrazo: 3.5,
     piel: 0xa6c94a, pielOscura: 0x7d9a33, ropa: 0x8a8f3a, ropaOscura: 0x5f6427, escupidor: true
+  },
+  minijefe: {
+    tamano: 100, hombros: 31, profundidad: 32, cabeza: 12, alcance: 36, grosorBrazo: 12,
+    piel: 0x6d5a3f, pielOscura: 0x4e3f2b, ropa: 0x2b2b2b, ropaOscura: 0x1c1c1c, torsoDesnudo: true, jefe: 1
+  },
+  jefe: {
+    tamano: 150, hombros: 47, profundidad: 50, cabeza: 16, alcance: 52, grosorBrazo: 17,
+    piel: 0x6b4a6e, pielOscura: 0x4a3150, ropa: 0x1e1420, ropaOscura: 0x120b14, torsoDesnudo: true, escupidor: true, jefe: 2
   }
 };
 
@@ -119,6 +127,19 @@ export function dibujarZombie(g, tipo) {
     g.fillCircle(c - 5, c + 3, 1.8);
   }
 
+  if (z.jefe) {
+    g.fillStyle(0xe8dcc0, 1);
+    for (let i = -2; i <= 2; i++) {
+      const y = c + i * h * 0.38;
+      g.fillTriangle(c - z.profundidad * 0.35, y - 4, c - z.profundidad * 0.35, y + 4, c - z.profundidad * 0.75, y);
+    }
+    g.fillStyle(z.pielOscura, 1);
+    g.fillCircle(c - z.profundidad * 0.15, c - h * 0.55, h * 0.18);
+    g.fillCircle(c + z.profundidad * 0.1, c + h * 0.6, h * 0.15);
+    g.fillStyle(0xc96b8a, 0.9);
+    g.fillCircle(c - z.profundidad * 0.2, c + h * 0.25, h * 0.12);
+  }
+
   g.fillStyle(SANGRE, 0.9);
   g.fillCircle(c + 2, c - h * 0.2, h * 0.16);
   g.fillCircle(c + 4, c - h * 0.05, h * 0.09);
@@ -134,6 +155,13 @@ export function dibujarZombie(g, tipo) {
   g.fillStyle(OJO_ZOMBIE, 1);
   g.fillCircle(c + 1 + z.cabeza * 0.6, c - z.cabeza * 0.38, Math.max(1.1, z.cabeza * 0.17));
   g.fillCircle(c + 1 + z.cabeza * 0.6, c + z.cabeza * 0.38, Math.max(1.1, z.cabeza * 0.17));
+
+  if (z.jefe === 2) {
+    g.fillStyle(0xffd23f, 1);
+    g.fillCircle(c + z.cabeza * 0.2, c - z.cabeza * 0.65, z.cabeza * 0.14);
+    g.fillCircle(c + z.cabeza * 0.2, c + z.cabeza * 0.65, z.cabeza * 0.14);
+    g.fillCircle(c - z.cabeza * 0.3, c, z.cabeza * 0.12);
+  }
 
   if (z.escupidor) {
     g.fillStyle(0x1a1a0a, 1);
@@ -186,15 +214,6 @@ function dibujarAuto(g, x, y, horizontal, color, quemado) {
   }
 }
 
-function dibujarResplandor(g, x, y, radio) {
-  for (let i = 5; i >= 1; i--) {
-    g.fillStyle(0xff7a1a, 0.035 * (6 - i));
-    g.fillCircle(x, y, (radio * i) / 5);
-  }
-  g.fillStyle(0xffd27a, 0.35);
-  g.fillCircle(x, y, radio * 0.12);
-}
-
 function dibujarSangre(g, rng, x, y, escala) {
   g.fillStyle(0x4f0909, 0.85);
   for (let i = 0; i < 5; i++) {
@@ -220,129 +239,309 @@ function dibujarGrieta(g, rng, x, y) {
   g.strokePath();
 }
 
-export function dibujarCiudad(g, ancho, alto, borde) {
-  const rng = new Phaser.Math.RandomDataGenerator(['ciudad-zombie']);
-  const anchoCalle = 130;
-  const acera = 16;
-  const horizontales = [Math.round(alto * 0.27), Math.round(alto * 0.73)];
-  const verticales = [Math.round(ancho * 0.28), Math.round(ancho * 0.72)];
-  const dentroX = () => rng.between(borde + 30, ancho - borde - 30);
-  const dentroY = () => rng.between(borde + 30, alto - borde - 30);
 
-  g.fillStyle(0x34353a, 1);
-  g.fillRect(0, 0, ancho, alto);
-  g.lineStyle(1, 0x2b2c30, 1);
-  for (let x = 0; x <= ancho; x += 48) g.lineBetween(x, 0, x, alto);
-  for (let y = 0; y <= alto; y += 48) g.lineBetween(0, y, ancho, y);
+const BASE_TEMA = {
+  suelo: 0x34353a,
+  juntas: 0x2b2c30,
+  acera: 0x4a4b50,
+  asfalto: 0x232427,
+  linea: 0x8f7d2b,
+  techo: 0x1b1c21,
+  techoDetalle: 0x2e3138,
+  cesped: 14,
+  colorCesped: 0x3b4429,
+  sangre: 26,
+  escombros: 70,
+  grietas: 40,
+  baches: 12,
+  quemaduras: 10,
+  autos: [7, 5],
+  quemados: 0.35,
+  coloresAuto: [0x8a2a2a, 0x2d4f7c, 0x6f6f6f, 0xc9a227, 0x2f5d3a, 0xd8d8d8],
+  fuegosTecho: 4,
+  calles: { h: [0.27, 0.73], v: [0.28, 0.72] },
+  anchoCalle: 130,
+  bordeTipo: 'edificios',
+  extras: ['barricadas']
+};
 
-  for (let i = 0; i < 14; i++) {
-    g.fillStyle(0x3b4429, rng.realInRange(0.35, 0.6));
-    g.fillEllipse(dentroX(), dentroY(), rng.between(60, 160), rng.between(40, 110));
+export const TEMAS = {
+  ciudad: {},
+  avenida: { autos: [9, 6] },
+  suburbio: {
+    suelo: 0x33452b, juntas: 0x2e3f27, colorCesped: 0x2a3a20, cesped: 30, techo: 0x6b2f24, techoDetalle: 0x8a3d2e,
+    calles: { h: [0.5], v: [0.33, 0.68] }, autos: [4, 3], quemados: 0.2, sangre: 16, escombros: 30, grietas: 15,
+    bordeTipo: 'casas', extras: ['vallas', 'arbustos']
+  },
+  plaza: {
+    suelo: 0x57524a, juntas: 0x4a463f, calles: { h: [0.16, 0.84], v: [0.14, 0.86] }, sangre: 40, autos: [5, 3],
+    extras: ['fuente', 'bancas', 'arbustos', 'barricadas']
+  },
+  centro: {
+    suelo: 0x303238, techo: 0x111216, techoDetalle: 0x23252c, calles: { h: [0.25, 0.75], v: [0.22, 0.5, 0.78] },
+    autos: [10, 6], quemados: 0.45, fuegosTecho: 6, bordeTipo: 'rascacielos', extras: ['barricadas']
+  },
+  hospital: {
+    suelo: 0x6c7176, juntas: 0x5f6468, acera: 0x7f8489, techo: 0xb9bec2, techoDetalle: 0x9aa0a5, cesped: 6,
+    coloresAuto: [0xe8e8e8, 0xe8e8e8, 0x2d4f7c, 0x6f6f6f], sangre: 40, calles: { h: [0.3], v: [0.5] },
+    autos: [6, 4], quemados: 0.15, extras: ['cruces', 'camillas', 'barricadas']
+  },
+  industrial: {
+    suelo: 0x4a4535, juntas: 0x3e3a2d, acera: 0x5a5547, techo: 0x2f3338, techoDetalle: 0x454a52, cesped: 4,
+    colorCesped: 0x3a3a26, calles: { h: [0.5], v: [0.3, 0.7] }, autos: [4, 3], extras: ['contenedores', 'barriles', 'manchas']
+  },
+  puerto: {
+    suelo: 0x3a3d41, juntas: 0x313438, cesped: 0, calles: { h: [0.35], v: [0.5] }, autos: [4, 3],
+    bordeTipo: 'agua', extras: ['contenedores', 'gruas', 'barriles']
+  },
+  autopista: {
+    suelo: 0x2c2d30, juntas: 0x26272a, cesped: 6, calles: { h: [0.3, 0.7], v: [0.5] }, anchoCalle: 220,
+    autos: [14, 6], quemados: 0.4, bordeTipo: 'muros', extras: ['barreras']
+  },
+  militar: {
+    suelo: 0x3d4630, juntas: 0x353d2a, colorCesped: 0x2f3824, cesped: 24, acera: 0x55594a, techo: 0x2f3a26,
+    techoDetalle: 0x46523a, coloresAuto: [0x4b5a33, 0x4b5a33, 0x6b6b4a], calles: { h: [0.5], v: [0.5] },
+    autos: [5, 4], bordeTipo: 'vallas', extras: ['sacos', 'tiendas', 'alambre']
+  },
+  puente: {
+    suelo: 0x2a2b2e, juntas: 0x252629, cesped: 0, calles: { h: [0.5], v: [] }, anchoCalle: 760, autos: [16, 0],
+    quemados: 0.5, fuegosTecho: 0, sangre: 30, bordeTipo: 'agua', extras: ['barreras']
   }
+};
 
-  horizontales.forEach((y) => {
-    g.fillStyle(0x4a4b50, 1);
-    g.fillRect(0, y - anchoCalle / 2 - acera, ancho, anchoCalle + acera * 2);
-  });
-  verticales.forEach((x) => {
-    g.fillStyle(0x4a4b50, 1);
-    g.fillRect(x - anchoCalle / 2 - acera, 0, anchoCalle + acera * 2, alto);
-  });
-  horizontales.forEach((y) => {
-    g.fillStyle(0x232427, 1);
-    g.fillRect(0, y - anchoCalle / 2, ancho, anchoCalle);
-    g.fillStyle(0x8f7d2b, 0.7);
-    for (let x = 0; x < ancho; x += 64) g.fillRect(x, y - 2, 32, 4);
-  });
-  verticales.forEach((x) => {
-    g.fillStyle(0x232427, 1);
-    g.fillRect(x - anchoCalle / 2, 0, anchoCalle, alto);
-    g.fillStyle(0x8f7d2b, 0.7);
-    for (let y = 0; y < alto; y += 64) g.fillRect(x - 2, y, 4, 32);
-  });
+function dibujarFuego(g, x, y, radio) {
+  for (let i = 5; i >= 1; i--) {
+    g.fillStyle(0xff7a1a, 0.035 * (6 - i));
+    g.fillCircle(x, y, (radio * i) / 5);
+  }
+  g.fillStyle(0xffd27a, 0.35);
+  g.fillCircle(x, y, radio * 0.12);
+}
 
-  horizontales.forEach((y) => {
-    verticales.forEach((x) => {
-      g.fillStyle(0x232427, 1);
-      g.fillRect(x - anchoCalle / 2, y - anchoCalle / 2, anchoCalle, anchoCalle);
-      g.fillStyle(0xd8d8d8, 0.35);
-      for (let i = 0; i < 6; i++) {
-        const desplazamiento = -anchoCalle / 2 + 10 + i * 20;
-        g.fillRect(x + desplazamiento, y - anchoCalle / 2 - 14, 10, 12);
-        g.fillRect(x + desplazamiento, y + anchoCalle / 2 + 2, 10, 12);
-        g.fillRect(x - anchoCalle / 2 - 14, y + desplazamiento, 12, 10);
-        g.fillRect(x + anchoCalle / 2 + 2, y + desplazamiento, 12, 10);
+function dibujarExtras(g, rng, t, ancho, alto, borde, dentroX, dentroY) {
+  const extras = t.extras;
+  if (extras.includes('barricadas')) {
+    for (let i = 0; i < 6; i++) {
+      const x = dentroX();
+      const y = dentroY();
+      g.fillStyle(0x7a5a2e, 1);
+      g.fillRect(x - 22, y - 4, 44, 8);
+      g.fillStyle(0xd8d8d8, 1);
+      for (let j = 0; j < 4; j++) g.fillRect(x - 20 + j * 11, y - 4, 5, 8);
+    }
+  }
+  if (extras.includes('arbustos')) {
+    for (let i = 0; i < 26; i++) {
+      const x = dentroX();
+      const y = dentroY();
+      g.fillStyle(0x1f2e18, 1);
+      g.fillCircle(x, y, rng.between(9, 16));
+      g.fillStyle(0x2f4423, 1);
+      g.fillCircle(x - 3, y - 3, rng.between(5, 9));
+    }
+  }
+  if (extras.includes('vallas')) {
+    g.lineStyle(3, 0x8a6b45, 1);
+    for (let i = 0; i < 10; i++) {
+      const x = dentroX();
+      const y = dentroY();
+      const largo = rng.between(60, 140);
+      if (rng.frac() < 0.5) g.lineBetween(x, y, x + largo, y);
+      else g.lineBetween(x, y, x, y + largo);
+    }
+  }
+  if (extras.includes('fuente')) {
+    const x = ancho / 2;
+    const y = alto / 2;
+    g.fillStyle(0x6e6a62, 1);
+    g.fillCircle(x, y, 92);
+    g.fillStyle(0x1d3a3f, 1);
+    g.fillCircle(x, y, 78);
+    g.fillStyle(0x3d1a1a, 0.6);
+    g.fillCircle(x + 20, y - 10, 30);
+    g.fillStyle(0x6e6a62, 1);
+    g.fillCircle(x, y, 18);
+  }
+  if (extras.includes('bancas')) {
+    for (let i = 0; i < 10; i++) {
+      const x = dentroX();
+      const y = dentroY();
+      g.fillStyle(0x5a3d22, 1);
+      g.fillRect(x - 18, y - 5, 36, 10);
+      g.fillStyle(0x2a2a2a, 1);
+      g.fillRect(x - 18, y - 6, 3, 12);
+      g.fillRect(x + 15, y - 6, 3, 12);
+    }
+  }
+  if (extras.includes('cruces')) {
+    for (let i = 0; i < 6; i++) {
+      const x = dentroX();
+      const y = dentroY();
+      g.fillStyle(0xd8d8d8, 0.8);
+      g.fillCircle(x, y, 26);
+      g.fillStyle(0xc0392b, 1);
+      g.fillRect(x - 6, y - 18, 12, 36);
+      g.fillRect(x - 18, y - 6, 36, 12);
+    }
+  }
+  if (extras.includes('camillas')) {
+    for (let i = 0; i < 10; i++) {
+      const x = dentroX();
+      const y = dentroY();
+      g.fillStyle(0x9a9fa5, 1);
+      g.fillRect(x - 20, y - 8, 40, 16);
+      g.fillStyle(0xe8e8e8, 1);
+      g.fillRect(x - 17, y - 6, 34, 12);
+      g.fillStyle(0x6b0f0f, 0.8);
+      g.fillCircle(x + 4, y, 5);
+    }
+  }
+  if (extras.includes('contenedores')) {
+    const colores = [0xa33b2b, 0x2d5f8a, 0x2f7d4a, 0xc98a2b, 0x6b3d8a];
+    for (let i = 0; i < 14; i++) {
+      const x = dentroX();
+      const y = dentroY();
+      const horizontal = rng.frac() < 0.6;
+      const w = horizontal ? 110 : 40;
+      const h = horizontal ? 40 : 110;
+      g.fillStyle(0x000000, 0.35);
+      g.fillRect(x + 4, y + 4, w, h);
+      g.fillStyle(rng.pick(colores), 1);
+      g.fillRect(x, y, w, h);
+      g.lineStyle(1, 0x000000, 0.35);
+      if (horizontal) for (let j = 8; j < w; j += 8) g.lineBetween(x + j, y + 2, x + j, y + h - 2);
+      else for (let j = 8; j < h; j += 8) g.lineBetween(x + 2, y + j, x + w - 2, y + j);
+    }
+  }
+  if (extras.includes('barriles')) {
+    for (let i = 0; i < 24; i++) {
+      const x = dentroX();
+      const y = dentroY();
+      g.fillStyle(rng.frac() < 0.5 ? 0x2f5d3a : 0x8a3a1a, 1);
+      g.fillCircle(x, y, 9);
+      g.lineStyle(1.5, 0x111111, 0.8);
+      g.strokeCircle(x, y, 9);
+      g.strokeCircle(x, y, 5);
+    }
+  }
+  if (extras.includes('manchas')) {
+    for (let i = 0; i < 18; i++) {
+      g.fillStyle(0x0d0d0f, 0.55);
+      g.fillEllipse(dentroX(), dentroY(), rng.between(30, 90), rng.between(18, 50));
+    }
+  }
+  if (extras.includes('gruas')) {
+    g.fillStyle(0xc9a227, 1);
+    const y = Math.round(alto * 0.62);
+    g.fillRect(borde, y, ancho - borde * 2, 6);
+    g.fillRect(borde, y + 46, ancho - borde * 2, 6);
+    for (let x = borde + 80; x < ancho - borde; x += 320) {
+      g.fillStyle(0xd9b13a, 1);
+      g.fillRect(x, y - 6, 26, 64);
+      g.fillStyle(0x3a3a3a, 1);
+      g.fillRect(x + 6, y + 4, 14, 44);
+    }
+  }
+  if (extras.includes('barreras')) {
+    t.calles.h.forEach((relacion) => {
+      const y = Math.round(alto * relacion);
+      g.fillStyle(0x8c8c88, 1);
+      for (let x = borde + 20; x < ancho - borde - 40; x += 60) {
+        if (rng.frac() < 0.25) continue;
+        g.fillRect(x, y - 4, 44, 8);
       }
-      g.fillStyle(0x17181a, 1);
-      g.fillCircle(x + 30, y - 28, 9);
-      g.lineStyle(1, 0x3a3b40, 1);
-      g.strokeCircle(x + 30, y - 28, 9);
     });
-  });
-
-  for (let i = 0; i < 40; i++) dibujarGrieta(g, rng, dentroX(), dentroY());
-
-  for (let i = 0; i < 12; i++) {
-    g.fillStyle(0x161618, 0.9);
-    g.fillEllipse(dentroX(), dentroY(), rng.between(14, 30), rng.between(10, 20));
   }
-
-  for (let i = 0; i < 10; i++) {
-    const x = dentroX();
-    const y = dentroY();
-    for (let j = 4; j >= 1; j--) {
-      g.fillStyle(0x0b0b0c, 0.12);
-      g.fillCircle(x, y, j * 16);
+  if (extras.includes('sacos')) {
+    for (let i = 0; i < 10; i++) {
+      const x = dentroX();
+      const y = dentroY();
+      g.fillStyle(0x8a7a52, 1);
+      for (let j = 0; j < 5; j++) g.fillEllipse(x + j * 14, y + Math.abs(j - 2) * 3, 16, 10);
+      g.lineStyle(1, 0x5a4f35, 1);
+      for (let j = 0; j < 5; j++) g.strokeEllipse(x + j * 14, y + Math.abs(j - 2) * 3, 16, 10);
     }
   }
-
-  const coloresAuto = [0x8a2a2a, 0x2d4f7c, 0x6f6f6f, 0xc9a227, 0x2f5d3a, 0xd8d8d8];
-  const fuegos = [];
-  horizontales.forEach((y) => {
-    for (let i = 0; i < 7; i++) {
-      const x = rng.between(borde + 60, ancho - borde - 60);
-      if (verticales.some((v) => Math.abs(v - x) < anchoCalle)) continue;
-      const quemado = rng.frac() < 0.35;
-      const autoY = y + (rng.frac() < 0.5 ? -30 : 30);
-      dibujarAuto(g, x, autoY, true, rng.pick(coloresAuto), quemado);
-      if (quemado) fuegos.push({ x, y: autoY });
+  if (extras.includes('tiendas')) {
+    for (let i = 0; i < 6; i++) {
+      const x = dentroX();
+      const y = dentroY();
+      g.fillStyle(0x4b5a33, 1);
+      g.fillRect(x - 40, y - 26, 80, 52);
+      g.fillStyle(0x3a4627, 1);
+      g.fillRect(x - 40, y - 3, 80, 6);
+      g.lineStyle(1, 0x2a331c, 1);
+      g.strokeRect(x - 40, y - 26, 80, 52);
     }
-  });
-  verticales.forEach((x) => {
-    for (let i = 0; i < 5; i++) {
-      const y = rng.between(borde + 60, alto - borde - 60);
-      if (horizontales.some((hz) => Math.abs(hz - y) < anchoCalle)) continue;
-      const quemado = rng.frac() < 0.35;
-      const autoX = x + (rng.frac() < 0.5 ? -30 : 30);
-      dibujarAuto(g, autoX, y, false, rng.pick(coloresAuto), quemado);
-      if (quemado) fuegos.push({ x: autoX, y });
+  }
+  if (extras.includes('alambre')) {
+    g.lineStyle(1.5, 0x9a9a9a, 0.9);
+    for (let i = 0; i < 8; i++) {
+      const x = dentroX();
+      const y = dentroY();
+      g.beginPath();
+      g.moveTo(x, y);
+      for (let j = 1; j <= 12; j++) g.lineTo(x + j * 10, y + (j % 2 === 0 ? -5 : 5));
+      g.strokePath();
     }
-  });
+  }
+}
 
-  for (let i = 0; i < 26; i++) dibujarSangre(g, rng, dentroX(), dentroY(), rng.realInRange(0.6, 1.4));
-
-  for (let i = 0; i < 70; i++) {
-    g.fillStyle(rng.pick([0x55565c, 0x6b5a45, 0x3e3f44, 0x8c8c8c]), 1);
-    g.fillRect(dentroX(), dentroY(), rng.between(3, 9), rng.between(3, 7));
+function dibujarBorde(g, rng, t, ancho, alto, borde) {
+  const bandas = [[0, 0, ancho, borde], [0, alto - borde, ancho, borde], [0, 0, borde, alto], [ancho - borde, 0, borde, alto]];
+  if (t.bordeTipo === 'agua') {
+    g.fillStyle(0x10283a, 1);
+    bandas.forEach(([x, y, w, h]) => g.fillRect(x, y, w, h));
+    g.lineStyle(2, 0x2c5a78, 0.7);
+    for (let i = 0; i < 60; i++) {
+      const [bx, by, bw, bh] = bandas[rng.between(0, 3)];
+      const x = bx + rng.between(4, Math.max(5, bw - 24));
+      const y = by + rng.between(4, Math.max(5, bh - 8));
+      g.lineBetween(x, y, x + 16, y);
+    }
+    g.lineStyle(4, 0x6b6b66, 1);
+    g.strokeRect(borde, borde, ancho - borde * 2, alto - borde * 2);
+    return;
+  }
+  if (t.bordeTipo === 'vallas') {
+    g.fillStyle(0x2c3424, 1);
+    bandas.forEach(([x, y, w, h]) => g.fillRect(x, y, w, h));
+    g.lineStyle(1, 0x8a8a8a, 0.6);
+    for (let x = 0; x < ancho; x += 10) {
+      g.lineBetween(x, borde - 14, x + 10, borde - 4);
+      g.lineBetween(x + 10, borde - 14, x, borde - 4);
+      g.lineBetween(x, alto - borde + 4, x + 10, alto - borde + 14);
+      g.lineBetween(x + 10, alto - borde + 4, x, alto - borde + 14);
+    }
+    for (let y = 0; y < alto; y += 10) {
+      g.lineBetween(borde - 14, y, borde - 4, y + 10);
+      g.lineBetween(borde - 4, y, borde - 14, y + 10);
+      g.lineBetween(ancho - borde + 4, y, ancho - borde + 14, y + 10);
+      g.lineBetween(ancho - borde + 14, y, ancho - borde + 4, y + 10);
+    }
+    g.lineStyle(3, 0x6b6b66, 1);
+    g.strokeRect(borde, borde, ancho - borde * 2, alto - borde * 2);
+    return;
+  }
+  if (t.bordeTipo === 'muros') {
+    g.fillStyle(0x5a5b5e, 1);
+    bandas.forEach(([x, y, w, h]) => g.fillRect(x, y, w, h));
+    g.fillStyle(0x47484b, 1);
+    for (let x = 0; x < ancho; x += 40) {
+      g.fillRect(x, 0, 2, borde);
+      g.fillRect(x, alto - borde, 2, borde);
+    }
+    for (let y = 0; y < alto; y += 40) {
+      g.fillRect(0, y, borde, 2);
+      g.fillRect(ancho - borde, y, borde, 2);
+    }
+    g.lineStyle(3, 0x8c8c88, 1);
+    g.strokeRect(borde, borde, ancho - borde * 2, alto - borde * 2);
+    return;
   }
 
-  for (let i = 0; i < 6; i++) {
-    const x = dentroX();
-    const y = dentroY();
-    g.fillStyle(0x7a5a2e, 1);
-    g.fillRect(x - 22, y - 4, 44, 8);
-    g.fillStyle(0xd8d8d8, 1);
-    for (let j = 0; j < 4; j++) g.fillRect(x - 20 + j * 11, y - 4, 5, 8);
-  }
-
-  fuegos.forEach((fuego) => dibujarResplandor(g, fuego.x, fuego.y, rng.between(70, 110)));
-
-  g.fillStyle(0x1b1c21, 1);
-  g.fillRect(0, 0, ancho, borde);
-  g.fillRect(0, alto - borde, ancho, borde);
-  g.fillRect(0, 0, borde, alto);
-  g.fillRect(ancho - borde, 0, borde, alto);
-
+  g.fillStyle(t.techo, 1);
+  bandas.forEach(([x, y, w, h]) => g.fillRect(x, y, w, h));
   g.lineStyle(2, 0x0e0f12, 1);
   for (let x = rng.between(120, 220); x < ancho; x += rng.between(140, 260)) {
     g.lineBetween(x, 0, x, borde);
@@ -357,8 +556,19 @@ export function dibujarCiudad(g, ancho, alto, borde) {
     const lado = rng.between(0, 3);
     const x = lado < 2 ? rng.between(10, ancho - 40) : lado === 2 ? rng.between(8, borde - 30) : rng.between(ancho - borde + 8, ancho - 30);
     const y = lado >= 2 ? rng.between(10, alto - 40) : lado === 0 ? rng.between(8, borde - 30) : rng.between(alto - borde + 8, alto - 30);
-    if (rng.frac() < 0.6) {
-      g.fillStyle(0x2e3138, 1);
+    if (t.bordeTipo === 'casas') {
+      g.lineStyle(2, t.techoDetalle, 1);
+      g.lineBetween(x, y + 9, x + 26, y + 9);
+      g.fillStyle(0x3a3a3a, 1);
+      g.fillRect(x + 18, y + 2, 6, 6);
+    } else if (t.bordeTipo === 'rascacielos') {
+      g.fillStyle(t.techoDetalle, 1);
+      g.fillRect(x, y, 24, 24);
+      g.fillStyle(0xd9c56b, 0.25);
+      g.fillRect(x + 4, y + 4, 4, 4);
+      g.fillRect(x + 14, y + 12, 4, 4);
+    } else if (rng.frac() < 0.6) {
+      g.fillStyle(t.techoDetalle, 1);
       g.fillRect(x, y, 22, 18);
       g.lineStyle(1, 0x464a53, 1);
       g.strokeRect(x, y, 22, 18);
@@ -371,15 +581,211 @@ export function dibujarCiudad(g, ancho, alto, borde) {
     }
   }
 
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < t.fuegosTecho; i++) {
     const enX = rng.frac() < 0.5;
     const x = enX ? rng.between(200, ancho - 200) : (rng.frac() < 0.5 ? borde / 2 : ancho - borde / 2);
     const y = enX ? (rng.frac() < 0.5 ? borde / 2 : alto - borde / 2) : rng.between(200, alto - 200);
     g.fillStyle(0x0a0a0b, 0.8);
     g.fillCircle(x, y, 24);
-    dibujarResplandor(g, x, y, 70);
+    dibujarFuego(g, x, y, 70);
   }
 
   g.lineStyle(3, 0x40434b, 1);
   g.strokeRect(borde, borde, ancho - borde * 2, alto - borde * 2);
+}
+
+export function dibujarCiudad(g, ancho, alto, borde, temaId = 'ciudad') {
+  const t = { ...BASE_TEMA, ...(TEMAS[temaId] || {}) };
+  const rng = new Phaser.Math.RandomDataGenerator(['zombies-' + temaId]);
+  const anchoCalle = t.anchoCalle;
+  const acera = 16;
+  const horizontales = t.calles.h.map((r) => Math.round(alto * r));
+  const verticales = t.calles.v.map((r) => Math.round(ancho * r));
+  const dentroX = () => rng.between(borde + 30, ancho - borde - 30);
+  const dentroY = () => rng.between(borde + 30, alto - borde - 30);
+
+  g.fillStyle(t.suelo, 1);
+  g.fillRect(0, 0, ancho, alto);
+  g.lineStyle(1, t.juntas, 1);
+  for (let x = 0; x <= ancho; x += 48) g.lineBetween(x, 0, x, alto);
+  for (let y = 0; y <= alto; y += 48) g.lineBetween(0, y, ancho, y);
+
+  for (let i = 0; i < t.cesped; i++) {
+    g.fillStyle(t.colorCesped, rng.realInRange(0.35, 0.6));
+    g.fillEllipse(dentroX(), dentroY(), rng.between(60, 160), rng.between(40, 110));
+  }
+
+  horizontales.forEach((y) => {
+    g.fillStyle(t.acera, 1);
+    g.fillRect(0, y - anchoCalle / 2 - acera, ancho, anchoCalle + acera * 2);
+  });
+  verticales.forEach((x) => {
+    g.fillStyle(t.acera, 1);
+    g.fillRect(x - anchoCalle / 2 - acera, 0, anchoCalle + acera * 2, alto);
+  });
+  horizontales.forEach((y) => {
+    g.fillStyle(t.asfalto, 1);
+    g.fillRect(0, y - anchoCalle / 2, ancho, anchoCalle);
+    g.fillStyle(t.linea, 0.7);
+    const carriles = Math.max(1, Math.round(anchoCalle / 130));
+    for (let c = 1; c <= carriles; c++) {
+      const yLinea = y - anchoCalle / 2 + (anchoCalle * c) / (carriles + 1);
+      for (let x = 0; x < ancho; x += 64) g.fillRect(x, yLinea - 2, 32, 4);
+    }
+  });
+  verticales.forEach((x) => {
+    g.fillStyle(t.asfalto, 1);
+    g.fillRect(x - anchoCalle / 2, 0, anchoCalle, alto);
+    g.fillStyle(t.linea, 0.7);
+    for (let y = 0; y < alto; y += 64) g.fillRect(x - 2, y, 4, 32);
+  });
+
+  horizontales.forEach((y) => {
+    verticales.forEach((x) => {
+      g.fillStyle(t.asfalto, 1);
+      g.fillRect(x - anchoCalle / 2, y - anchoCalle / 2, anchoCalle, anchoCalle);
+      g.fillStyle(0xd8d8d8, 0.35);
+      const pasos = Math.floor((anchoCalle - 20) / 20);
+      for (let i = 0; i < pasos; i++) {
+        const desplazamiento = -anchoCalle / 2 + 10 + i * 20;
+        g.fillRect(x + desplazamiento, y - anchoCalle / 2 - 14, 10, 12);
+        g.fillRect(x + desplazamiento, y + anchoCalle / 2 + 2, 10, 12);
+        g.fillRect(x - anchoCalle / 2 - 14, y + desplazamiento, 12, 10);
+        g.fillRect(x + anchoCalle / 2 + 2, y + desplazamiento, 12, 10);
+      }
+    });
+  });
+
+  for (let i = 0; i < t.grietas; i++) dibujarGrieta(g, rng, dentroX(), dentroY());
+
+  for (let i = 0; i < t.baches; i++) {
+    g.fillStyle(0x161618, 0.9);
+    g.fillEllipse(dentroX(), dentroY(), rng.between(14, 30), rng.between(10, 20));
+  }
+
+  for (let i = 0; i < t.quemaduras; i++) {
+    const x = dentroX();
+    const y = dentroY();
+    for (let j = 4; j >= 1; j--) {
+      g.fillStyle(0x0b0b0c, 0.12);
+      g.fillCircle(x, y, j * 16);
+    }
+  }
+
+  dibujarExtras(g, rng, t, ancho, alto, borde, dentroX, dentroY);
+
+  const fuegos = [];
+  horizontales.forEach((y) => {
+    for (let i = 0; i < t.autos[0]; i++) {
+      const x = rng.between(borde + 60, ancho - borde - 60);
+      if (verticales.some((v) => Math.abs(v - x) < anchoCalle)) continue;
+      const quemado = rng.frac() < t.quemados;
+      const autoY = y + rng.between(-anchoCalle / 2 + 20, anchoCalle / 2 - 20);
+      dibujarAuto(g, x, autoY, true, rng.pick(t.coloresAuto), quemado);
+      if (quemado) fuegos.push({ x, y: autoY });
+    }
+  });
+  verticales.forEach((x) => {
+    for (let i = 0; i < t.autos[1]; i++) {
+      const y = rng.between(borde + 60, alto - borde - 60);
+      if (horizontales.some((hz) => Math.abs(hz - y) < anchoCalle)) continue;
+      const quemado = rng.frac() < t.quemados;
+      const autoX = x + (rng.frac() < 0.5 ? -30 : 30);
+      dibujarAuto(g, autoX, y, false, rng.pick(t.coloresAuto), quemado);
+      if (quemado) fuegos.push({ x: autoX, y });
+    }
+  });
+
+  for (let i = 0; i < t.sangre; i++) dibujarSangre(g, rng, dentroX(), dentroY(), rng.realInRange(0.6, 1.4));
+
+  for (let i = 0; i < t.escombros; i++) {
+    g.fillStyle(rng.pick([0x55565c, 0x6b5a45, 0x3e3f44, 0x8c8c8c]), 1);
+    g.fillRect(dentroX(), dentroY(), rng.between(3, 9), rng.between(3, 7));
+  }
+
+  fuegos.forEach((fuego) => dibujarFuego(g, fuego.x, fuego.y, rng.between(70, 110)));
+  dibujarBorde(g, rng, t, ancho, alto, borde);
+}
+
+const DISENO_COFRE = {
+  activa: { caja: 0x1f4f8a, tapa: 0x2f6fbf, borde: 0x9ad4ff, brillo: 0x3ea8ff },
+  arma: { caja: 0x4b5a33, tapa: 0x5d6e40, borde: 0x2a331c, brillo: 0xd9a03a },
+  pasiva: { caja: 0x6b4a2b, tapa: 0x8a5f37, borde: 0x4cd97b, brillo: 0x4cd97b },
+  mejora: { caja: 0x4a2a6b, tapa: 0x63398f, borde: 0xf0c94a, brillo: 0xb36bff }
+};
+
+export const TAMANO_COFRE = { ancho: 48, alto: 44 };
+
+function dibujarIconoCofre(g, tipo, cx, cy, color) {
+  g.fillStyle(color, 1);
+  if (tipo === 'activa') {
+    g.fillTriangle(cx + 2, cy - 9, cx - 6, cy + 2, cx + 1, cy + 1);
+    g.fillTriangle(cx - 2, cy + 9, cx + 6, cy - 2, cx - 1, cy - 1);
+  } else if (tipo === 'arma') {
+    g.fillRect(cx - 9, cy - 3, 14, 5);
+    g.fillRect(cx - 9, cy - 3, 4, 10);
+    g.fillRect(cx + 5, cy - 2, 5, 3);
+  } else if (tipo === 'pasiva') {
+    g.fillCircle(cx - 3.5, cy - 2, 4);
+    g.fillCircle(cx + 3.5, cy - 2, 4);
+    g.fillTriangle(cx - 7.5, cy - 1, cx + 7.5, cy - 1, cx, cy + 7);
+  } else {
+    g.fillTriangle(cx, cy - 9, cx - 8, cy, cx + 8, cy);
+    g.fillRect(cx - 3, cy, 6, 9);
+  }
+}
+
+export function dibujarCofre(g, tipo, abierto) {
+  const d = DISENO_COFRE[tipo];
+  const w = TAMANO_COFRE.ancho;
+  const h = TAMANO_COFRE.alto;
+  const x = 4;
+  const y = 12;
+  const cw = w - 8;
+  const ch = h - 16;
+
+  if (abierto) {
+    for (let i = 4; i >= 1; i--) {
+      g.fillStyle(d.brillo, 0.08 * (5 - i));
+      g.fillCircle(w / 2, y + 4, 6 + i * 5);
+    }
+  }
+  g.fillStyle(0x000000, 0.35);
+  g.fillRoundedRect(x + 2, y + 3, cw, ch, 4);
+  g.fillStyle(d.caja, 1);
+  g.fillRoundedRect(x, y, cw, ch, 4);
+  g.lineStyle(2, d.borde, 1);
+  g.strokeRoundedRect(x, y, cw, ch, 4);
+
+  if (tipo === 'arma') {
+    g.fillStyle(0x2a331c, 1);
+    g.fillRect(x + 8, y, 4, ch);
+    g.fillRect(x + cw - 12, y, 4, ch);
+  }
+  if (tipo === 'mejora' || tipo === 'pasiva') {
+    g.fillStyle(d.borde, 1);
+    g.fillRect(x, y + ch / 2 - 1.5, cw, 3);
+  }
+  if (tipo === 'activa') {
+    g.lineStyle(1, d.borde, 0.6);
+    g.lineBetween(x + 4, y + ch - 6, x + cw - 4, y + ch - 6);
+  }
+
+  if (abierto) {
+    g.fillStyle(0x0b0b0c, 1);
+    g.fillRect(x + 3, y + 2, cw - 6, 6);
+    g.fillStyle(d.tapa, 1);
+    g.fillRoundedRect(x, 0, cw, 10, 3);
+    g.lineStyle(2, d.borde, 1);
+    g.strokeRoundedRect(x, 0, cw, 10, 3);
+    dibujarIconoCofre(g, tipo, w / 2, y + ch / 2 + 2, d.brillo);
+  } else {
+    g.fillStyle(d.tapa, 1);
+    g.fillRoundedRect(x, y - 6, cw, 12, 4);
+    g.lineStyle(2, d.borde, 1);
+    g.strokeRoundedRect(x, y - 6, cw, 12, 4);
+    g.fillStyle(d.borde, 1);
+    g.fillRect(w / 2 - 4, y + 2, 8, 8);
+    dibujarIconoCofre(g, tipo, w / 2, y + ch / 2 + 6, d.brillo);
+  }
 }

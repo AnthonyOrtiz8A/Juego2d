@@ -15,17 +15,26 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.proximoDisparo = 0;
     this.sentido = 1;
     this.proximoObjetivo = 0;
+    this.vidaMaxima = 1;
+    this.estadoJefe = 'perseguir';
+    this.finFase = 0;
+    this.anguloEmbestida = 0;
     this.setDepth(5);
   }
 
-  aparecer(tipo, x, y, multiplicadorVelocidad, objetivo) {
+  aparecer(tipo, x, y, multiplicadorVelocidad, objetivo, multiplicadorVida = 1) {
     const datos = ENEMIGOS.tipos[tipo];
     this.tipo = tipo;
     this.datos = datos;
     this.setTexture('enemigo-' + tipo);
     this.enableBody(true, x, y, true, true);
     this.body.setCircle(datos.radio, this.width / 2 - datos.radio, this.height / 2 - datos.radio);
-    this.vida = datos.vida;
+    this.vida = datos.vida * multiplicadorVida;
+    this.vidaMaxima = this.vida;
+    this.estadoJefe = 'perseguir';
+    this.finFase = this.scene.reloj + (datos.pausaMs || 0);
+    this.setScale(1);
+    this.setDepth(datos.jefe ? 6 : 5);
     this.velocidad = datos.velocidad * multiplicadorVelocidad;
     this.objetivo = objetivo;
     this.fase = Math.random() * Math.PI * 2;
@@ -74,6 +83,11 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     const velocidad = lento ? this.velocidad * congelacion.factorVelocidad : this.velocidad;
     const haciaJugador = Math.atan2(this.objetivo.y - this.y, this.objetivo.x - this.x);
 
+    if (this.datos.jefe) {
+      this.comportamientoJefe(haciaJugador, velocidad, lento);
+      return;
+    }
+
     if (this.datos.distancia) {
       this.comportamientoTirador(haciaJugador, velocidad, lento);
       return;
@@ -82,6 +96,61 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite {
     const angulo = haciaJugador + Math.sin(time * 0.003 + this.fase) * ENEMIGOS.zigzag;
     this.body.velocity.set(Math.cos(angulo) * velocidad, Math.sin(angulo) * velocidad);
     this.rotation = angulo;
+  }
+
+  comportamientoJefe(haciaJugador, velocidad, lento) {
+    const datos = this.datos;
+    const escena = this.scene;
+    const reloj = escena.reloj;
+    const furia = this.vida < this.vidaMaxima / 2;
+    const ritmo = furia ? 0.6 : 1;
+
+    if (this.estadoJefe === 'aviso') {
+      this.body.velocity.set(0, 0);
+      this.setScale(1 + Math.sin(reloj / 40) * 0.06);
+      if (reloj >= this.finFase) {
+        this.estadoJefe = 'embestida';
+        this.finFase = reloj + datos.embestidaMs;
+        this.setScale(1);
+      }
+      return;
+    }
+
+    if (this.estadoJefe === 'embestida') {
+      const rapidez = datos.embestidaVelocidad * (lento ? HABILIDADES.tipos.congelar.factorVelocidad : 1);
+      this.body.velocity.set(Math.cos(this.anguloEmbestida) * rapidez, Math.sin(this.anguloEmbestida) * rapidez);
+      this.rotation = this.anguloEmbestida;
+      if (reloj >= this.finFase) {
+        this.estadoJefe = 'perseguir';
+        this.finFase = reloj + datos.pausaMs * ritmo;
+      }
+      return;
+    }
+
+    const rapidez = velocidad * (furia ? 1.35 : 1);
+    this.body.velocity.set(Math.cos(haciaJugador) * rapidez, Math.sin(haciaJugador) * rapidez);
+    this.rotation = haciaJugador;
+    if (reloj < this.finFase) return;
+
+    const acciones = ['embestida'];
+    if (datos.acidoBalas > 0) acciones.push('acido');
+    if (datos.invocar > 0) acciones.push('invocar');
+    const accion = Phaser.Utils.Array.GetRandom(acciones);
+
+    if (accion === 'embestida') {
+      this.estadoJefe = 'aviso';
+      this.anguloEmbestida = haciaJugador;
+      this.finFase = reloj + datos.avisoMs * ritmo;
+      return;
+    }
+    if (accion === 'acido') {
+      const paso = (Math.PI * 2) / datos.acidoBalas;
+      for (let i = 0; i < datos.acidoBalas; i++) escena.dispararEnemigo(this.x, this.y, haciaJugador + i * paso);
+      for (let i = -1; i <= 1; i++) escena.dispararEnemigo(this.x, this.y, haciaJugador + i * 0.15);
+    } else {
+      escena.invocarEsbirros(this.x, this.y, datos.invocar + (furia ? 2 : 0));
+    }
+    this.finFase = reloj + datos.pausaMs * ritmo;
   }
 
   comportamientoTirador(haciaJugador, velocidad, lento) {

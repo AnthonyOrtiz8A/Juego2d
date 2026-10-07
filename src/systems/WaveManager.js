@@ -1,14 +1,24 @@
 import { OLEADAS } from '../config.js';
 
 export default class WaveManager {
-  constructor(scene) {
+  constructor(scene, opciones = {}) {
     this.scene = scene;
-    this.oleada = 0;
+    this.inicio = opciones.inicio || 1;
+    this.total = opciones.total || Infinity;
+    this.jefe = opciones.jefe || null;
+    this.multiplicadorCantidad = opciones.multiplicadorCantidad || 1;
+    this.oleada = this.inicio - 1;
     this.pendientes = 0;
     this.porTanda = 1;
     this.multiplicadorVelocidad = 1;
     this.evento = null;
     this.esperando = false;
+    this.jefeGenerado = false;
+    this.terminado = false;
+  }
+
+  get numeroEnNivel() {
+    return this.oleada - this.inicio + 1;
   }
 
   iniciar() {
@@ -18,14 +28,14 @@ export default class WaveManager {
   siguienteOleada() {
     this.oleada += 1;
     const n = this.oleada - 1;
-    this.pendientes = OLEADAS.enemigosBase + n * OLEADAS.enemigosPorOleada;
+    this.pendientes = Math.round((OLEADAS.enemigosBase + n * OLEADAS.enemigosPorOleada) * this.multiplicadorCantidad);
     this.multiplicadorVelocidad = Math.min(1 + n * OLEADAS.incrementoVelocidad, OLEADAS.multiplicadorVelocidadMax);
     this.porTanda = 1 + Math.floor(n / OLEADAS.oleadasPorGrupoExtra);
     const intervalo = Math.max(OLEADAS.intervaloMinMs, OLEADAS.intervaloBaseMs - n * OLEADAS.reduccionIntervaloMs);
     this.esperando = false;
     this.detener();
     this.evento = this.scene.time.addEvent({ delay: intervalo, loop: true, callback: this.generar, callbackScope: this });
-    this.scene.events.emit('oleada', this.oleada);
+    this.scene.events.emit('oleada', this.numeroEnNivel, this.total);
   }
 
   elegirTipo() {
@@ -58,8 +68,24 @@ export default class WaveManager {
   }
 
   verificarFin() {
-    if (this.esperando || this.pendientes > 0 || this.scene.enemigos.countActive(true) > 0) return;
+    if (this.terminado || this.esperando || this.pendientes > 0 || this.scene.enemigos.countActive(true) > 0) return;
     this.esperando = true;
+
+    if (this.numeroEnNivel >= this.total) {
+      if (this.jefe && !this.jefeGenerado) {
+        this.jefeGenerado = true;
+        this.scene.events.emit('oleadaCompletada', this.oleada);
+        this.scene.time.delayedCall(OLEADAS.pausaEntreOleadasMs, () => {
+          this.esperando = false;
+          this.scene.generarJefe(this.jefe);
+        });
+        return;
+      }
+      this.terminado = true;
+      this.scene.events.emit('nivelCompletado');
+      return;
+    }
+
     this.scene.events.emit('oleadaCompletada', this.oleada);
     this.scene.time.delayedCall(OLEADAS.pausaEntreOleadasMs, () => this.siguienteOleada());
   }

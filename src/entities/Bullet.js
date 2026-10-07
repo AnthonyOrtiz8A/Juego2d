@@ -8,10 +8,17 @@ export default class Bullet extends Phaser.Physics.Arcade.Sprite {
     super(scene, x, y, 'bala');
     this.expiraEn = 0;
     this.danio = BALA.danio;
+    this.perforacion = 0;
+    this.duenio = null;
+    this.ultimoGolpe = null;
   }
 
   disparar(x, y, angulo, tiempo, velocidad = BALA.velocidad, vidaMs = BALA.vidaMs) {
     this.enableBody(true, x, y, true, true);
+    this.danio = BALA.danio;
+    this.perforacion = 0;
+    this.duenio = null;
+    this.ultimoGolpe = null;
     this.rotation = angulo;
     this.scene.physics.velocityFromRotation(angulo, velocidad, this.body.velocity);
     this.expiraEn = tiempo + vidaMs;

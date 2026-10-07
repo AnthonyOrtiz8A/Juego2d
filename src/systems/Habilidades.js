@@ -57,6 +57,7 @@ const EJECUTAR = {
         angulo,
         scene.time.now
       );
+      bala.duenio = jugador;
     }
   },
 
@@ -76,6 +77,7 @@ export default class GestorHabilidades {
     this.jugador = jugador;
     this.ranuras = { E: HABILIDADES.inicial, Q: null, R: null };
     this.listaEn = { E: 0, Q: 0, R: 0 };
+    this.duraciones = { E: 1, Q: 1, R: 1 };
   }
 
   desbloqueada(tecla) {
@@ -98,14 +100,16 @@ export default class GestorHabilidades {
   progreso(tecla, reloj) {
     const id = this.ranuras[tecla];
     if (!id) return 0;
-    return this.restante(tecla, reloj) / HABILIDADES.tipos[id].enfriamientoMs;
+    return this.restante(tecla, reloj) / this.duraciones[tecla];
   }
 
   usar(tecla, reloj) {
     const id = this.ranuras[tecla];
     if (!id || reloj < this.listaEn[tecla]) return false;
     const datos = HABILIDADES.tipos[id];
-    this.listaEn[tecla] = reloj + datos.enfriamientoMs;
+    const enfriamiento = datos.enfriamientoMs * this.jugador.multiplicadorEnfriamiento();
+    this.duraciones[tecla] = enfriamiento;
+    this.listaEn[tecla] = reloj + enfriamiento;
     EJECUTAR[id](this.scene, datos, this.jugador);
     return true;
   }

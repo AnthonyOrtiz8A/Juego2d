@@ -1,5 +1,13 @@
-export const ANCHO = 800;
 export const ALTO = 600;
+
+function relacionPantalla() {
+  if (typeof window === 'undefined') return 16 / 9;
+  const mayor = Math.max(window.innerWidth, window.innerHeight);
+  const menor = Math.max(1, Math.min(window.innerWidth, window.innerHeight));
+  return Math.min(Math.max(mayor / menor, 4 / 3), 2.2);
+}
+
+export const ANCHO = Math.round(ALTO * relacionPantalla());
 
 export const MUNDO = {
   ancho: 1600,
@@ -27,7 +35,7 @@ export const BALA = {
   velocidad: 640,
   danio: 1,
   vidaMs: 1100,
-  poolMax: 90,
+  poolMax: 160,
   distanciaCanon: 20
 };
 
@@ -57,6 +65,36 @@ export const ENEMIGOS = {
       tolerancia: 40,
       alcanceExtra: 120,
       cadenciaMs: 1800
+    },
+    minijefe: {
+      vida: 140,
+      velocidad: 70,
+      radio: 30,
+      puntos: 500,
+      sangre: 0x5e0b0b,
+      jefe: true,
+      nombre: 'El Bruto',
+      embestidaVelocidad: 430,
+      embestidaMs: 700,
+      avisoMs: 650,
+      pausaMs: 2600,
+      acidoBalas: 0,
+      invocar: 0
+    },
+    jefe: {
+      vida: 700,
+      velocidad: 62,
+      radio: 46,
+      puntos: 3000,
+      sangre: 0x3d0a0a,
+      jefe: true,
+      nombre: 'La Abominación',
+      embestidaVelocidad: 470,
+      embestidaMs: 800,
+      avisoMs: 700,
+      pausaMs: 2200,
+      acidoBalas: 18,
+      invocar: 4
     }
   }
 };
@@ -181,10 +219,68 @@ export const RED = {
   intentosCodigo: 4,
   esperaConexionMs: 10000,
   intervaloSnapshotMs: 50,
-  intervaloEntradaMs: 50,
+  intervaloEntradaMs: 33,
+  margenCulling: 260,
   suavizado: 0.45,
   extrapolacionMaxMs: 150,
   vidasAlRevivir: 1,
   reapuntadoEnemigoMs: 500,
   separacionAparicion: 60
+};
+
+export const ARMAS = {
+  pistola: { nombre: 'Pistola', cadenciaMs: 110, danio: 1, balas: 1, dispersion: 0, velocidad: 640, vidaMs: 1100, perforacion: 0 },
+  escopeta: { nombre: 'Escopeta', cadenciaMs: 520, danio: 1.2, balas: 6, dispersion: 0.55, velocidad: 580, vidaMs: 430, perforacion: 0 },
+  subfusil: { nombre: 'Subfusil', cadenciaMs: 65, danio: 0.7, balas: 1, dispersion: 0.12, velocidad: 700, vidaMs: 900, perforacion: 0 },
+  rifle: { nombre: 'Rifle', cadenciaMs: 380, danio: 4, balas: 1, dispersion: 0, velocidad: 980, vidaMs: 1300, perforacion: 3 }
+};
+
+export const PASIVAS = {
+  vitalidad: { nombre: 'Vitalidad', texto: '+1 vida máxima\ny te cura 1 vida', maximo: 3 },
+  agilidad: { nombre: 'Agilidad', texto: '+15 % velocidad\nde movimiento', maximo: 3, valor: 0.15 },
+  regeneracion: { nombre: 'Regeneración', texto: 'Recuperas 1 vida\nal terminar cada nivel', maximo: 2 },
+  vampiro: { nombre: 'Vampiro', texto: 'Cada 25 zombies\nque eliminas recuperas\n1 vida', maximo: 2, bajas: 25 },
+  blindaje: { nombre: 'Blindaje', texto: '+50 % tiempo de\ninvulnerabilidad\ntras un golpe', maximo: 2, valor: 0.5 },
+  recarga: { nombre: 'Recarga rápida', texto: '-20 % enfriamiento\nde habilidades', maximo: 3, valor: 0.8 }
+};
+
+export const MEJORAS = {
+  danio: { nombre: 'Munición pesada', texto: '+25 % de daño\ncon tu arma', valor: 0.25 },
+  cadencia: { nombre: 'Gatillo ligero', texto: '+20 % de cadencia\nde disparo', valor: 0.2 },
+  calibre: { nombre: 'Calibre perforante', texto: 'Las balas atraviesan\n1 zombie más', valor: 1 },
+  canon: { nombre: 'Doble cañón', texto: '+1 bala por disparo', valor: 1 },
+  alcance: { nombre: 'Cañón largo', texto: '+30 % de alcance\nde las balas', valor: 0.3 }
+};
+
+export const COFRES = {
+  tipos: {
+    activa: { nombre: 'Habilidad activa', color: 0x3ea8ff, peso: 1 },
+    arma: { nombre: 'Arma', color: 0xd9a03a, peso: 1 },
+    pasiva: { nombre: 'Habilidad pasiva', color: 0x4cd97b, peso: 1.2 },
+    mejora: { nombre: 'Mejora', color: 0xb36bff, peso: 1.2 }
+  },
+  extra: 1,
+  radioApertura: 44,
+  aperturaMs: 700,
+  separacion: 90,
+  esperaSiguienteMs: 4000
+};
+
+export const HISTORIA = {
+  multVidaPorMundo: [1, 1.35, 1.8],
+  multVidaPorJugador: 0.35,
+  multCantidadPorJugador: 0.4,
+  niveles: [
+    { mundo: 1, numero: 1, nombre: 'Barrio residencial', tema: 'suburbio', inicio: 1, oleadas: 3 },
+    { mundo: 1, numero: 2, nombre: 'Avenida principal', tema: 'avenida', inicio: 2, oleadas: 3 },
+    { mundo: 1, numero: 3, nombre: 'Plaza del centro', tema: 'plaza', inicio: 4, oleadas: 4, jefe: 'minijefe' },
+    { mundo: 2, numero: 1, nombre: 'Distrito financiero', tema: 'centro', inicio: 4, oleadas: 3 },
+    { mundo: 2, numero: 2, nombre: 'Hospital general', tema: 'hospital', inicio: 5, oleadas: 4 },
+    { mundo: 2, numero: 3, nombre: 'Zona industrial', tema: 'industrial', inicio: 7, oleadas: 4, jefe: 'minijefe' },
+    { mundo: 3, numero: 1, nombre: 'Puerto', tema: 'puerto', inicio: 7, oleadas: 4 },
+    { mundo: 3, numero: 2, nombre: 'Autopista', tema: 'autopista', inicio: 8, oleadas: 4 },
+    { mundo: 3, numero: 3, nombre: 'Base militar', tema: 'militar', inicio: 9, oleadas: 5 },
+    { mundo: 3, numero: 4, nombre: 'Puente de escape', tema: 'puente', inicio: 10, oleadas: 3, jefe: 'jefe' }
+  ],
+  mundos: ['Las afueras', 'El centro', 'La salida']
 };

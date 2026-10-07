@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { JUGADOR, HABILIDADES } from '../config.js';
+import { JUGADOR, HABILIDADES, PASIVAS, MEJORAS } from '../config.js';
+import { estadisticasArma } from '../systems/Recompensas.js';
 
 export default class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, x, y, opciones = {}) {
@@ -12,6 +13,20 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.id = opciones.id || 'local';
     this.nombre = opciones.nombre || '';
     this.local = opciones.local !== false;
+    this.indice = opciones.indice || 0;
+    this.arma = 'pistola';
+    this.mejoras = {};
+    this.pasivas = {};
+    Object.keys(MEJORAS).forEach((id) => {
+      this.mejoras[id] = 0;
+    });
+    Object.keys(PASIVAS).forEach((id) => {
+      this.pasivas[id] = 0;
+    });
+    this.bajas = 0;
+    this.teletransportes = 0;
+    this.velocidadRed = { x: 0, y: 0 };
+    this.ultimaEntrada = 0;
     this.entrada = { dx: 0, dy: 0, angulo: 0, disparando: false, habilidades: [] };
     this.habilidades = null;
     this.etiqueta = null;
@@ -38,7 +53,38 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       dx /= largo;
       dy /= largo;
     }
-    this.body.setVelocity(dx * JUGADOR.velocidad, dy * JUGADOR.velocidad);
+    const velocidad = this.velocidadMovimiento();
+    this.body.setVelocity(dx * velocidad, dy * velocidad);
+  }
+
+  velocidadMovimiento() {
+    return JUGADOR.velocidad * (1 + this.pasivas.agilidad * PASIVAS.agilidad.valor);
+  }
+
+  vidasMaximas() {
+    return JUGADOR.vidas + this.pasivas.vitalidad;
+  }
+
+  curar(cantidad) {
+    this.vidas = Math.min(this.vidasMaximas(), this.vidas + cantidad);
+  }
+
+  multiplicadorEnfriamiento() {
+    return Math.pow(PASIVAS.recarga.valor, this.pasivas.recarga);
+  }
+
+  datosArma() {
+    return estadisticasArma(this.arma, this.mejoras);
+  }
+
+  registrarBaja() {
+    if (this.pasivas.vampiro === 0) return;
+    this.bajas += 1;
+    const necesarias = Math.round(PASIVAS.vampiro.bajas / this.pasivas.vampiro);
+    if (this.bajas >= necesarias) {
+      this.bajas = 0;
+      this.curar(1);
+    }
   }
 
   iniciarDash(hasta, vx, vy) {
@@ -59,10 +105,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     else this.clearTint();
   }
 
-  puedeDisparar(tiempo) {
+  puedeDisparar(tiempo, cadenciaMs) {
     if (tiempo < this.proximoDisparo) return false;
     const multiplicador = this.enFrenesi ? HABILIDADES.tipos.frenesi.multiplicadorCadencia : 1;
-    this.proximoDisparo = tiempo + JUGADOR.cadenciaMs / multiplicador;
+    this.proximoDisparo = tiempo + cadenciaMs / multiplicador;
     return true;
   }
 
@@ -73,7 +119,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   recibirDanio(tiempo) {
     if (!this.vivo || this.esInvulnerable(tiempo)) return false;
     this.vidas -= 1;
-    this.invulnerableHasta = tiempo + JUGADOR.invulnerabilidadMs;
+    this.invulnerableHasta = tiempo + JUGADOR.invulnerabilidadMs * (1 + this.pasivas.blindaje * PASIVAS.blindaje.valor);
     return true;
   }
 
@@ -87,6 +133,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.desconectado) return;
     this.vivo = true;
     this.vidas = vidas;
+    this.teletransportes += 1;
     this.invulnerableHasta = tiempo + JUGADOR.invulnerabilidadMs;
     this.enableBody(true, x, y, true, true);
     if (this.etiqueta) this.etiqueta.setVisible(true);

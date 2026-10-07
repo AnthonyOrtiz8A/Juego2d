@@ -2,6 +2,7 @@ const CLAVE_RECORD = 'shooter2d.record';
 const CLAVE_SONIDO = 'shooter2d.sonido';
 const CLAVE_RECORD_PACMAN = 'shooter2d.recordPacman';
 const CLAVE_NOMBRE = 'shooter2d.nombre';
+const CLAVE_HISTORIA = 'shooter2d.historia';
 
 function leer(clave) {
   try {
@@ -47,6 +48,27 @@ const Storage = {
 
   guardarNombre(nombre) {
     escribir(CLAVE_NOMBRE, nombre);
+  },
+
+  obtenerHistoria() {
+    try {
+      const datos = JSON.parse(leer(CLAVE_HISTORIA));
+      return datos && Number.isInteger(datos.nivel) ? datos : null;
+    } catch {
+      return null;
+    }
+  },
+
+  guardarHistoria(datos) {
+    escribir(CLAVE_HISTORIA, JSON.stringify(datos));
+  },
+
+  borrarHistoria() {
+    try {
+      window.localStorage.removeItem(CLAVE_HISTORIA);
+    } catch {
+      return;
+    }
   },
 
   sonidoActivo() {

@@ -21,6 +21,11 @@ const PLANTILLA = `
       <p class="lobby-codigo">Código: <b data-campo="codigo-sala"></b></p>
       <p class="lobby-ayuda">Compártelo con quienes estén en tu misma WiFi (máx. ${RED.maxJugadores} jugadores)</p>
       <ul data-campo="lista"></ul>
+      <div class="lobby-fila" data-campo="modos">
+        <button data-accion="modo-supervivencia" class="lobby-modo">Supervivencia</button>
+        <button data-accion="modo-historia" class="lobby-modo">Historia</button>
+      </div>
+      <p class="lobby-ayuda" data-campo="modo"></p>
       <button data-accion="empezar">Empezar partida</button>
       <p class="lobby-ayuda" data-campo="espera">Esperando a que el anfitrión empiece…</p>
       <button data-accion="salir" class="lobby-secundario">Salir</button>
@@ -100,6 +105,12 @@ export default class LobbyScene extends Phaser.Scene {
       case 'volver':
         this.scene.start('Menu');
         break;
+      case 'modo-supervivencia':
+        this.red.cambiarModo('supervivencia');
+        break;
+      case 'modo-historia':
+        this.red.cambiarModo('historia');
+        break;
       default:
         break;
     }
@@ -156,6 +167,7 @@ export default class LobbyScene extends Phaser.Scene {
     this.panel.querySelector('[data-vista="sala"]').hidden = false;
     this.campo('codigo-sala').textContent = this.red.codigo;
     this.boton('empezar').hidden = !this.red.esAnfitrion;
+    this.campo('modos').hidden = !this.red.esAnfitrion;
     this.campo('espera').hidden = this.red.esAnfitrion;
     this.estado('');
     this.ocupado(false);
@@ -163,6 +175,10 @@ export default class LobbyScene extends Phaser.Scene {
   }
 
   dibujarLista(jugadores) {
+    const historia = this.red.modo === 'historia';
+    this.campo('modo').textContent = 'Modo: ' + (historia ? 'Historia (3 mundos)' : 'Supervivencia (oleadas infinitas)');
+    this.boton('modo-supervivencia').classList.toggle('lobby-activo', !historia);
+    this.boton('modo-historia').classList.toggle('lobby-activo', historia);
     const lista = this.campo('lista');
     lista.replaceChildren();
     jugadores.forEach((jugador) => {
@@ -176,8 +192,8 @@ export default class LobbyScene extends Phaser.Scene {
   }
 
   empezar() {
-    this.red.iniciarPartida();
-    this.scene.start('Game', { red: this.red });
+    this.red.iniciarPartida(0);
+    this.scene.start('Game', { red: this.red, modo: this.red.modo, nivel: 0 });
   }
 
   limpiar() {

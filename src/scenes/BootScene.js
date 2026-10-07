@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { MUNDO, COLORES, TACTIL, PACMAN } from '../config.js';
-import { ESTUDIANTE, ZOMBIES, dibujarEstudiante, dibujarZombie, dibujarCiudad, dibujarAcido, dibujarCorazon } from '../systems/Dibujos.js';
+import { MUNDO, COLORES, TACTIL, PACMAN, COFRES } from '../config.js';
+import { ESTUDIANTE, ZOMBIES, TAMANO_COFRE, dibujarEstudiante, dibujarZombie, dibujarCiudad, dibujarAcido, dibujarCorazon, dibujarCofre } from '../systems/Dibujos.js';
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -42,6 +42,11 @@ export default class BootScene extends Phaser.Scene {
     });
 
     this.crearPacman();
+
+    Object.keys(COFRES.tipos).forEach((tipo) => {
+      this.crearTextura('cofre-' + tipo, TAMANO_COFRE.ancho, TAMANO_COFRE.alto, (g) => dibujarCofre(g, tipo, false));
+      this.crearTextura('cofre-' + tipo + '-abierto', TAMANO_COFRE.ancho, TAMANO_COFRE.alto, (g) => dibujarCofre(g, tipo, true));
+    });
 
     this.scene.start('Menu');
   }
